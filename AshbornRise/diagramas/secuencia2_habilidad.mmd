@@ -1,0 +1,51 @@
+sequenceDiagram
+    actor Jugador
+    participant VB as VistaBatalla
+    participant CB as ControladorBatalla
+    participant B as Batalla
+    participant AH as accion:AccionHabilidad
+    participant M as mago:Mago
+    participant BF as bolaDeFuego:HabilidadOfensiva
+    participant G1 as goblin1:GoblinMerodeador
+    participant G2 as goblin2:GoblinMerodeador
+
+    Jugador->>VB: clic "HABILIDAD" + "Bola de Fuego"
+    VB->>CB: usarHabilidad(bolaDeFuego, null)
+    CB->>B: getPersonajeActual()
+    B-->>CB: mago
+    CB->>CB: puedeUsarHabilidad(bolaDeFuego)
+    CB->>M: puedeUsar(bolaDeFuego)
+    M-->>CB: resultado
+    alt recurso suficiente
+        CB->>B: resolverObjetivos(bolaDeFuego, mago, null)
+        B-->>CB: [goblin1, goblin2]
+        CB->>AH: new AccionHabilidad(bolaDeFuego, objetivos)
+        CB->>B: ejecutarTurno(mago, accion)
+        activate B
+        B->>AH: ejecutar(mago, batalla)
+        activate AH
+        AH->>M: usarHabilidad(bolaDeFuego, objetivos)
+        activate M
+        M->>M: consumirRecurso(bolaDeFuego.getCostoRecurso())
+        M->>BF: ejecutar(mago, objetivos)
+        activate BF
+        loop por cada objetivo vivo
+            BF->>M: calcularDanio()
+            M-->>BF: danio
+            BF->>G1: recibirDanio(danio × multiplicadorDanio)
+            BF->>G2: recibirDanio(danio × multiplicadorDanio)
+        end
+        BF-->>M: texto del resultado
+        deactivate BF
+        M-->>AH: texto del resultado
+        deactivate M
+        AH->>B: registrar("Yssa usa Bola de Fuego. ...")
+        deactivate AH
+        B->>B: verificarFin()
+        deactivate B
+        CB->>CB: procesarTurnosEnemigos()
+        CB->>VB: actualizarVista(batalla)
+    else recurso insuficiente
+        CB->>VB: mostrarError("Maná insuficiente")
+    end
+    VB-->>Jugador: muestra el resultado

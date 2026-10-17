@@ -1,0 +1,12 @@
+{
+  "fechaGuardado": "16/10/2026 21:23",
+  "progresoBatallas": 4,
+  "oro": 207,
+  "items": ["Poción de Vida", "Poción de Vida", "Poción de Vida", "Poción de Maná", "Poción de Maná", "Antídoto", "Poción de Tenacidad", "Poción de Vida", "Poción de Vida", "Poción de Maná", "Antídoto", "Poción de Vida", "Poción de Vida", "Poción de Maná", "Antídoto"],
+  "personajes": [
+    {"clase": "Guerrero", "nombre": "Bram", "nivel": 2, "experiencia": 59, "vidaActual": 109, "recursoActual": 39},
+    {"clase": "Mago", "nombre": "Yssa", "nivel": 2, "experiencia": 35, "vidaActual": 88, "recursoActual": 98},
+    {"clase": "Arquero", "nombre": "Kel", "nivel": 2, "experiencia": 59, "vidaActual": 75, "recursoActual": 29},
+    {"clase": "Curador", "nombre": "Nia", "nivel": 2, "experiencia": 59, "vidaActual": 88, "recursoActual": 92}
+  ]
+}

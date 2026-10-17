@@ -1,0 +1,11 @@
+Imágenes opcionales para reemplazar los sprites dibujados en código (vista/Sprites.java).
+
+Poné acá un PNG (idealmente con fondo transparente) con el nombre exacto de la clase:
+
+  Guerrero.png   Mago.png   Arquero.png   Curador.png
+  GoblinMerodeador.png   EsqueletoGuerrero.png   ChamanOscuro.png
+  AranaVenenosa.png   SenorDeLasSombras.png
+
+Si el archivo no está, se usa el dibujo pixel art del código.
+Esta carpeta tiene que estar en la carpeta desde donde se ejecuta el juego
+(en IntelliJ, por defecto, la raíz del proyecto).

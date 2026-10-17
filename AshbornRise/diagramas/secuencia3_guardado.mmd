@@ -1,0 +1,28 @@
+sequenceDiagram
+    actor Jugador
+    participant VJ as VistaJuego
+    participant CJ as ControladorJuego
+    participant P as partida:Partida
+    participant PJ as persistencia:PersistenciaArchivoJSON
+    participant VP as VentanaPrincipal
+
+    Jugador->>VJ: clic "GUARDAR PARTIDA"
+    VJ->>CJ: guardarPartida()
+    CJ->>P: setFechaGuardado(fecha)
+    CJ->>PJ: guardar(partida, "savegame.json")
+    activate PJ
+    PJ->>PJ: serializar(partida)
+    PJ->>P: getFechaGuardado(), getProgresoBatallas()
+    PJ->>P: getInventario(), getEquipo()
+    P-->>PJ: fecha, progreso, inventario, equipo
+    PJ->>PJ: escribirArchivo(json, ruta)
+    PJ-->>CJ: (sin errores)
+    deactivate PJ
+    alt se guardó bien
+        CJ->>VP: getVistaJuego()
+        VP-->>CJ: vistaJuego
+        CJ->>VJ: mostrarMensaje("Partida guardada correctamente")
+    else IOException
+        CJ->>VP: mostrarError("No se pudo guardar la partida: ...")
+    end
+    VJ-->>Jugador: confirmación visual

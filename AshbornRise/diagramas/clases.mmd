@@ -1,0 +1,559 @@
+classDiagram
+direction TB
+
+%% ============================ MODELO: combatientes
+class Combatiente {
+  <<abstract>>
+  #String nombre
+  #int vidaActual
+  #int vidaMaximo
+  #int ataque
+  #int defensa
+  #int velocidad
+  #List~EstadoEfecto~ estados
+  #boolean defendiendo
+  +atacar(objetivo: Combatiente) int
+  +calcularDanio() int
+  +recibirDanio(cantidad: int) int
+  +perderVida(cantidad: int) void
+  +curar(cantidad: int) int
+  +defenderse() void
+  +usarHabilidad(h: Habilidad, objetivos: List~Combatiente~) String
+  +getPoderCuracion() double
+  +estaVivo() boolean
+  +obtenerVelocidad() int
+  +iniciarTurno() boolean
+  +aplicarEstados() void
+  +agregarEstado(e: EstadoEfecto) boolean
+  +puedeRecibirEstado(tipo: TipoEstado) boolean
+  +quitarEstado(tipo: TipoEstado) boolean
+  +tieneEstado(tipo: TipoEstado) boolean
+  +quitarTodosLosEstados() void
+  +alGolpear(objetivo: Combatiente, batalla: Batalla) void
+  +reaccionarAAtaque(atacante: Combatiente, batalla: Batalla) void
+  +esControladoPorJugador()* boolean
+}
+
+class Personaje {
+  <<abstract>>
+  -int nivel
+  -int experiencia
+  -int recursoActual
+  -int recursoMaximo
+  -TipoRecurso tipoRecurso
+  -int regeneracionMana
+  -List~Habilidad~ habilidades
+  +atacar(objetivo: Combatiente) int
+  +recibirDanio(cantidad: int) int
+  +defenderse() void
+  +iniciarTurno() boolean
+  +puedeUsar(h: Habilidad) boolean
+  +usarHabilidad(h: Habilidad, objetivos: List~Combatiente~) String
+  +usarItem(i: Item, objetivo: Personaje) String
+  +consumirRecurso(cantidad: int) void
+  +recuperarRecurso(cantidad: int) int
+  +experienciaParaSubir() int
+  +ganarExperiencia(cantidad: int) int
+  +subirNivel() void
+  #aplicarMejorasDeNivel()* void
+  #mejorarEstadisticas(vida: int, recurso: int, ataque: int, defensa: int) void
+  #aprenderHabilidad(h: Habilidad) void
+  +recuperarTrasBatalla() void
+  +restaurarCompleto() void
+  +restaurarProgreso(nivel: int, experiencia: int, vida: int, recurso: int) void
+  +getNombreClase()* String
+  +esControladoPorJugador() boolean
+}
+
+class Guerrero {
+  -int probabilidadContraataque
+  -Random random
+  +reaccionarAAtaque(atacante: Combatiente, batalla: Batalla) void
+  #aplicarMejorasDeNivel() void
+  +getNombreClase() String
+}
+class Mago {
+  -TipoElemento elementoDominante
+  #aplicarMejorasDeNivel() void
+  +getNombreClase() String
+}
+class Arquero {
+  -int probabilidadCritico
+  -Random random
+  +calcularDanio() int
+  #aplicarMejorasDeNivel() void
+  +getNombreClase() String
+}
+class Curador {
+  -double poderCuracion
+  +getPoderCuracion() double
+  #aplicarMejorasDeNivel() void
+  +getNombreClase() String
+}
+
+class Enemigo {
+  <<abstract>>
+  -int experienciaOtorgada
+  -int oroOtorgado
+  #Random random
+  +decidirAccion(batalla: Batalla)* Accion
+  +esControladoPorJugador() boolean
+  #escalar(valorBase: int, numeroBatalla: int)$ int
+  #elegirAlAzar(personajes: List~Personaje~) Personaje
+  #elegirConMenosVida(personajes: List~Personaje~) Personaje
+  +getExperienciaOtorgada() int
+  +getOroOtorgado() int
+}
+class GoblinMerodeador {
+  -int ORO_POR_ROBO$
+  -boolean robaOro
+  +decidirAccion(batalla: Batalla) Accion
+  +alGolpear(objetivo: Combatiente, batalla: Batalla) void
+}
+class EsqueletoGuerrero {
+  -boolean inmuneAVeneno
+  -boolean ultimoFueAtaque
+  +decidirAccion(batalla: Batalla) Accion
+  +puedeRecibirEstado(tipo: TipoEstado) boolean
+}
+class ChamanOscuro {
+  -int curacionOtorgada
+  -Habilidad curacionOscura
+  +decidirAccion(batalla: Batalla) Accion
+}
+class AranaVenenosa {
+  -int potenciaVeneno
+  +decidirAccion(batalla: Batalla) Accion
+  +alGolpear(objetivo: Combatiente, batalla: Batalla) void
+}
+class SenorDeLasSombras {
+  -int faseActual
+  -boolean cambioDeFaseAnunciado
+  +recibirDanio(cantidad: int) int
+  +decidirAccion(batalla: Batalla) Accion
+  +alGolpear(objetivo: Combatiente, batalla: Batalla) void
+}
+
+%% ============================ MODELO: habilidades
+class Habilidad {
+  <<abstract>>
+  -String nombre
+  -int costoRecurso
+  -TipoRecurso tipoRecurso
+  -TipoAlcance alcance
+  +ejecutar(origen: Combatiente, objetivos: List~Combatiente~)* String
+  +getCantidadObjetivos() int
+  +getCostoRecurso() int
+  +getTipoRecurso() TipoRecurso
+  +getAlcance() TipoAlcance
+}
+class HabilidadOfensiva {
+  -double multiplicadorDanio
+  -int cantidadObjetivos
+  +ejecutar(origen: Combatiente, objetivos: List~Combatiente~) String
+  +getCantidadObjetivos() int
+}
+class HabilidadCuracion {
+  -int curacionBase
+  -int cantidadObjetivos
+  +ejecutar(origen: Combatiente, objetivos: List~Combatiente~) String
+  +getCantidadObjetivos() int
+}
+class HabilidadEstado {
+  -TipoEstado efectoAplicado
+  -int potencia
+  -int duracion
+  -boolean limpiaEstadosNegativos
+  +ejecutar(origen: Combatiente, objetivos: List~Combatiente~) String
+  -crearEstado() EstadoEfecto
+  -tieneEstadoNegativo(objetivo: Combatiente) boolean
+}
+
+%% ============================ MODELO: estados
+class EstadoEfecto {
+  <<abstract>>
+  -String nombre
+  -int duracionRestante
+  +aplicarEfecto(objetivo: Combatiente) void
+  +modificarDanioRecibido(danio: int) int
+  +impideActuar() boolean
+  +tick() void
+  +haExpirado() boolean
+  +getTipo()* TipoEstado
+}
+class Veneno {
+  -int danioPorTurno
+  +aplicarEfecto(objetivo: Combatiente) void
+  +getTipo() TipoEstado
+}
+class Escudo {
+  -int puntosAbsorcion
+  +modificarDanioRecibido(danio: int) int
+  +haExpirado() boolean
+  +getTipo() TipoEstado
+}
+class Aturdimiento {
+  +impideActuar() boolean
+  +getTipo() TipoEstado
+}
+
+%% ============================ MODELO: items
+class Item {
+  <<abstract>>
+  -String nombre
+  -String descripcion
+  +usar(objetivo: Personaje)* String
+}
+class Consumible {
+  -TipoEfectoConsumible efecto
+  -int magnitud
+  +usar(objetivo: Personaje) String
+}
+
+%% ============================ MODELO: acciones
+class Accion {
+  <<abstract>>
+  +ejecutar(actor: Combatiente, batalla: Batalla)* void
+}
+class AccionAtacar {
+  -Combatiente objetivo
+  +ejecutar(actor: Combatiente, batalla: Batalla) void
+}
+class AccionDefender {
+  +ejecutar(actor: Combatiente, batalla: Batalla) void
+}
+class AccionHabilidad {
+  -Habilidad habilidad
+  -List~Combatiente~ objetivos
+  +ejecutar(actor: Combatiente, batalla: Batalla) void
+}
+class AccionItem {
+  -Personaje usuario
+  -Item item
+  -Personaje objetivo
+  +ejecutar(actor: Combatiente, batalla: Batalla) void
+}
+
+%% ============================ MODELO: batalla y partida
+class Batalla {
+  -int numeroBatalla
+  -Equipo aliados
+  -List~Enemigo~ enemigos
+  -List~Combatiente~ colaTurnos
+  -int ronda
+  -EstadoBatalla estado
+  -Inventario inventario
+  -List~Item~ botin
+  -GestorTurnos gestorTurnos
+  -Combatiente actorActual
+  -List~String~ registro
+  -Recompensa recompensa
+  +iniciar() void
+  +ejecutarTurno(actor: Combatiente, accion: Accion) void
+  +ejecutarTurnoEnemigo() void
+  +verificarFin() EstadoBatalla
+  +otorgarRecompensas() Recompensa
+  -armarColaDeTurnos() void
+  -avanzarAlSiguienteActor() void
+  -buscarEnemigo(c: Combatiente) Enemigo
+  +resolverObjetivos(h: Habilidad, origen: Personaje, elegido: Combatiente) List~Combatiente~
+  +robarOro(cantidad: int) int
+  +consumirItem(item: Item) void
+  +registrar(mensaje: String) void
+  +esTurnoDelJugador() boolean
+  +getPersonajeActual() Personaje
+  +getAliadosVivos() List~Personaje~
+  +getEnemigosVivos() List~Enemigo~
+}
+class GestorTurnos {
+  +calcularOrden(combatientes: List~Combatiente~) List~Combatiente~
+}
+class Recompensa {
+  -int experiencia
+  -int experienciaPorPersonaje
+  -int oro
+  -List~Item~ items
+  -List~String~ subidasDeNivel
+  +registrarSubidaDeNivel(descripcion: String) void
+}
+class Equipo {
+  +int MINIMO$
+  +int MAXIMO$
+  -List~Personaje~ integrantes
+  +agregarIntegrante(p: Personaje) void
+  +esValido() boolean
+  +obtenerVivos() List~Personaje~
+  +estaDerrotado() boolean
+  +recuperarTrasBatalla() void
+  +restaurarCompleto() void
+  +getIntegrantes() List~Personaje~
+}
+class Inventario {
+  -List~Item~ items
+  -int oro
+  +agregarItem(i: Item) void
+  +quitarItem(i: Item) void
+  +contiene(i: Item) boolean
+  +obtenerItems() List~Item~
+  +obtenerItemsDistintos() List~Item~
+  +cantidadDe(nombreItem: String) int
+  +agregarOro(cantidad: int) void
+  +quitarOro(cantidad: int) int
+  +getOro() int
+}
+class Partida {
+  -Equipo equipo
+  -Inventario inventario
+  -int progresoBatallas
+  -String fechaGuardado
+  +crearSiguienteBatalla() Batalla
+  +registrarVictoria() void
+  +estaCompleta() boolean
+  +getNumeroBatallaActual() int
+  +getEquipo() Equipo
+  +getInventario() Inventario
+  +getProgresoBatallas() int
+  +getFechaGuardado() String
+  +setFechaGuardado(fecha: String) void
+}
+class FabricaJuego {
+  +int CANTIDAD_BATALLAS$
+  +crearPartidaNueva()$ Partida
+  +crearPersonaje(clase: String, nombre: String)$ Personaje
+  +crearConsumible(nombre: String)$ Item
+  +crearEnemigos(numeroBatalla: int)$ List~Enemigo~
+  +crearBotin(numeroBatalla: int)$ List~Item~
+}
+
+%% ============================ ENUMS
+class EstadoBatalla {
+  <<enumeration>>
+  EN_CURSO
+  VICTORIA
+  DERROTA
+}
+class TipoRecurso {
+  <<enumeration>>
+  MANA
+  ENERGIA
+}
+class TipoElemento {
+  <<enumeration>>
+  FUEGO
+  HIELO
+  ARCANO
+}
+class TipoAlcance {
+  <<enumeration>>
+  UN_ENEMIGO
+  VARIOS_ENEMIGOS
+  UN_ALIADO
+  PROPIO
+}
+class TipoEstado {
+  <<enumeration>>
+  VENENO
+  ESCUDO
+  ATURDIMIENTO
+}
+class TipoEfectoConsumible {
+  <<enumeration>>
+  RESTAURAR_VIDA
+  RESTAURAR_MANA
+  QUITAR_VENENO
+  QUITAR_ATURDIMIENTO
+}
+
+%% ============================ PERSISTENCIA
+class IPersistencia {
+  <<interface>>
+  +guardar(p: Partida, ruta: String) void
+  +cargar(ruta: String) Partida
+}
+class PersistenciaArchivoJSON {
+  +guardar(p: Partida, ruta: String) void
+  +cargar(ruta: String) Partida
+  -serializar(p: Partida) String
+  -escribirArchivo(json: String, ruta: String) void
+  -deserializar(lineas: List~String~) Partida
+  -leerPersonaje(linea: String) Personaje
+}
+
+%% ============================ CONTROLADORES
+class ControladorJuego {
+  +String RUTA_GUARDADO$
+  -Partida partida
+  -IPersistencia persistencia
+  -VentanaPrincipal ventana
+  -ControladorBatalla controladorBatalla
+  +nuevaPartida() void
+  +cargarPartida() void
+  +guardarPartida() void
+  +usarItem(item: Item, objetivo: Personaje) void
+  +siguienteBatalla() void
+  +finalizarBatalla(batalla: Batalla) void
+  +reintentarBatalla() void
+  +continuarTrasResultados() void
+  +volverAlInicio() void
+  +salir() void
+}
+class ControladorBatalla {
+  -Batalla batalla
+  -VistaBatalla vista
+  -ControladorJuego controladorJuego
+  +iniciarBatalla(nuevaBatalla: Batalla) void
+  +atacar(objetivo: Combatiente) void
+  +defender() void
+  +usarHabilidad(habilidad: Habilidad, objetivoElegido: Combatiente) void
+  +puedeUsarHabilidad(habilidad: Habilidad) boolean
+  +usarItem(item: Item, objetivo: Personaje) void
+  +continuar() void
+  -despuesDeLaAccion() void
+  -procesarTurnosEnemigos() void
+}
+
+%% ============================ VISTAS
+class VentanaPrincipal {
+  <<JFrame>>
+  -VistaInicio vistaInicio
+  -VistaJuego vistaJuego
+  -VistaBatalla vistaBatalla
+  -VistaResultados vistaResultados
+  +conectarControladores(cj: ControladorJuego, cb: ControladorBatalla) void
+  +mostrarInicio() void
+  +mostrarJuego(partida: Partida) void
+  +mostrarBatalla() void
+  +mostrarResultadosVictoria(recompensa: Recompensa, partida: Partida, rondas: int) void
+  +mostrarResultadosDerrota(numeroBatalla: int) void
+  +mostrarError(mensaje: String) void
+  +getVistaJuego() VistaJuego
+  +getVistaBatalla() VistaBatalla
+}
+class VistaInicio {
+  <<JPanel>>
+  -ControladorJuego controlador
+  +setControlador(c: ControladorJuego) void
+}
+class VistaJuego {
+  <<JPanel>>
+  -ControladorJuego controlador
+  +actualizar(partida: Partida) void
+  +mostrarMensaje(mensaje: String) void
+  +setControlador(c: ControladorJuego) void
+}
+class VistaBatalla {
+  <<JPanel>>
+  -ControladorBatalla controlador
+  -Batalla batalla
+  -Modo modo
+  -Habilidad habilidadElegida
+  -Item itemElegido
+  +actualizarVista(batalla: Batalla) void
+  +mostrarError(mensaje: String) void
+  +setControlador(c: ControladorBatalla) void
+}
+class Modo {
+  <<enumeration>>
+  NINGUNO
+  ATACAR
+  ELEGIR_HABILIDAD
+  HABILIDAD_A_ENEMIGO
+  HABILIDAD_A_ALIADO
+  ELEGIR_ITEM
+  ITEM_A_ALIADO
+}
+class VistaResultados {
+  <<JPanel>>
+  -ControladorJuego controlador
+  +mostrarVictoria(recompensa: Recompensa, partida: Partida, rondas: int) void
+  +mostrarDerrota(numeroBatalla: int) void
+  +setControlador(c: ControladorJuego) void
+}
+class Estilo {
+  <<utilidad>>
+  +boton(texto: String)$ JButton
+  +etiqueta(texto: String, tamanio: int, color: Color)$ JLabel
+  +barra(valor: int, maximo: int, color: Color)$ JProgressBar
+  +tarjeta()$ JPanel
+}
+class Main {
+  +main(args: String[])$ void
+}
+
+%% ============================ RELACIONES
+Combatiente <|-- Personaje
+Combatiente <|-- Enemigo
+Personaje <|-- Guerrero
+Personaje <|-- Mago
+Personaje <|-- Arquero
+Personaje <|-- Curador
+Enemigo <|-- GoblinMerodeador
+Enemigo <|-- EsqueletoGuerrero
+Enemigo <|-- ChamanOscuro
+Enemigo <|-- AranaVenenosa
+Enemigo <|-- SenorDeLasSombras
+Habilidad <|-- HabilidadOfensiva
+Habilidad <|-- HabilidadCuracion
+Habilidad <|-- HabilidadEstado
+EstadoEfecto <|-- Veneno
+EstadoEfecto <|-- Escudo
+EstadoEfecto <|-- Aturdimiento
+Item <|-- Consumible
+Accion <|-- AccionAtacar
+Accion <|-- AccionDefender
+Accion <|-- AccionHabilidad
+Accion <|-- AccionItem
+IPersistencia <|.. PersistenciaArchivoJSON
+
+Combatiente "1" o-- "0..*" EstadoEfecto : posee
+Personaje "1" o-- "0..*" Habilidad : conoce
+ChamanOscuro "1" --> "1" Habilidad : curacionOscura
+HabilidadEstado ..> EstadoEfecto : crea
+Partida "1" *-- "1" Equipo
+Partida "1" *-- "1" Inventario
+Equipo "1" *-- "2..4" Personaje
+Inventario "1" *-- "0..*" Item
+Batalla "1" o-- "1" Equipo : aliados
+Batalla "1" o-- "1..*" Enemigo : enemigos
+Batalla "1" o-- "1" Inventario
+Batalla "1" --> "1" GestorTurnos : usa
+Batalla ..> Recompensa : crea
+Batalla ..> Accion : ejecuta
+Enemigo ..> Accion : decide
+AccionHabilidad --> Habilidad
+AccionItem --> Item
+Partida ..> Batalla : crea
+Partida ..> FabricaJuego : usa
+PersistenciaArchivoJSON ..> Partida
+PersistenciaArchivoJSON ..> FabricaJuego : usa
+Batalla --> EstadoBatalla
+Personaje --> TipoRecurso
+Habilidad --> TipoRecurso
+Habilidad --> TipoAlcance
+HabilidadEstado --> TipoEstado
+EstadoEfecto ..> TipoEstado
+Mago --> TipoElemento
+Consumible --> TipoEfectoConsumible
+
+ControladorJuego --> Partida
+ControladorJuego --> IPersistencia
+ControladorJuego --> VentanaPrincipal
+ControladorJuego --> ControladorBatalla
+ControladorBatalla --> Batalla
+ControladorBatalla --> VistaBatalla
+ControladorBatalla --> ControladorJuego
+ControladorBatalla ..> Accion : crea
+VentanaPrincipal *-- VistaInicio
+VentanaPrincipal *-- VistaJuego
+VentanaPrincipal *-- VistaBatalla
+VentanaPrincipal *-- VistaResultados
+VistaInicio --> ControladorJuego
+VistaJuego --> ControladorJuego
+VistaResultados --> ControladorJuego
+VistaBatalla --> ControladorBatalla
+VistaBatalla --> Modo
+Main ..> VentanaPrincipal : crea
+Main ..> ControladorJuego : crea
+Main ..> ControladorBatalla : crea
+VistaBatalla ..> Estilo : usa
+VistaJuego ..> Estilo : usa

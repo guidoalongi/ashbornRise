@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor Jugador
+    participant VB as VistaBatalla
+    participant CB as ControladorBatalla
+    participant B as Batalla
+    participant AA as accion:AccionAtacar
+    participant G as guerrero:Guerrero
+    participant GO as goblin:GoblinMerodeador
+
+    Jugador->>VB: clic "ATACAR" + clic en el goblin
+    VB->>CB: atacar(goblin)
+    CB->>B: getPersonajeActual()
+    B-->>CB: guerrero
+    CB->>AA: new AccionAtacar(goblin)
+    CB->>B: ejecutarTurno(guerrero, accion)
+    activate B
+    B->>AA: ejecutar(guerrero, batalla)
+    activate AA
+    AA->>G: atacar(goblin)
+    activate G
+    G->>G: calcularDanio()
+    G->>GO: recibirDanio(danio)
+    activate GO
+    GO->>GO: perderVida(danioReal)
+    GO-->>G: danioReal
+    deactivate GO
+    G-->>AA: danioReal
+    deactivate G
+    AA->>B: registrar("Bram ataca a Goblin por N de daño.")
+    AA->>G: alGolpear(goblin, batalla)
+    AA->>GO: estaVivo()
+    GO-->>AA: resultado
+    opt el goblin sigue vivo
+        AA->>GO: reaccionarAAtaque(guerrero, batalla)
+    end
+    deactivate AA
+    B->>B: verificarFin()
+    opt estado == EN_CURSO
+        B->>B: avanzarAlSiguienteActor()
+    end
+    deactivate B
+    CB->>CB: procesarTurnosEnemigos()
+    CB->>VB: actualizarVista(batalla)
+    VB-->>Jugador: muestra el resultado del turno
