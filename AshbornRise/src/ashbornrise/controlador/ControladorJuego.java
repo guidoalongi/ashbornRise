@@ -8,7 +8,6 @@ import ashbornrise.modelo.Recompensa;
 import ashbornrise.modelo.items.Item;
 import ashbornrise.modelo.personajes.Personaje;
 import ashbornrise.persistencia.IPersistencia;
-import ashbornrise.vista.VentanaPrincipal;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -25,10 +24,10 @@ public class ControladorJuego {
 
     private Partida partida;
     private IPersistencia persistencia;
-    private VentanaPrincipal ventana;
+    private IVentanaJuego ventana;
     private ControladorBatalla controladorBatalla;
 
-    public ControladorJuego(IPersistencia persistencia, VentanaPrincipal ventana) {
+    public ControladorJuego(IPersistencia persistencia, IVentanaJuego ventana) {
         this.persistencia = persistencia;
         this.ventana = ventana;
     }
@@ -48,7 +47,7 @@ public class ControladorJuego {
         try {
             partida = persistencia.cargar(RUTA_GUARDADO);
             ventana.mostrarJuego(partida);
-            ventana.getVistaJuego().mostrarMensaje("Partida cargada (guardada el " + partida.getFechaGuardado() + ")");
+            ventana.mostrarMensaje("Partida cargada (guardada el " + partida.getFechaGuardado() + ")");
         } catch (IOException e) {
             ventana.mostrarError("No se pudo cargar la partida: " + e.getMessage());
         }
@@ -65,7 +64,7 @@ public class ControladorJuego {
         partida.setFechaGuardado(fecha);
         try {
             persistencia.guardar(partida, RUTA_GUARDADO);
-            ventana.getVistaJuego().mostrarMensaje("Partida guardada correctamente");
+            ventana.mostrarMensaje("Partida guardada correctamente");
         } catch (IOException e) {
             ventana.mostrarError("No se pudo guardar la partida: " + e.getMessage());
         }
@@ -83,12 +82,12 @@ public class ControladorJuego {
         String resultado = objetivo.usarItem(item, objetivo);
         partida.getInventario().quitarItem(item);
         ventana.mostrarJuego(partida);
-        ventana.getVistaJuego().mostrarMensaje(resultado);
+        ventana.mostrarMensaje(resultado);
     }
 
     public void siguienteBatalla() {
         if (partida.estaCompleta()) {
-            ventana.getVistaJuego().mostrarMensaje("¡Ya completaste todas las batallas!");
+            ventana.mostrarMensaje("¡Ya completaste todas las batallas!");
             return;
         }
         Batalla batalla = partida.crearSiguienteBatalla();
@@ -118,7 +117,7 @@ public class ControladorJuego {
     public void continuarTrasResultados() {
         ventana.mostrarJuego(partida);
         if (partida.estaCompleta()) {
-            ventana.getVistaJuego().mostrarMensaje("¡Derrotaste al Señor de las Sombras! Eldara está a salvo.");
+            ventana.mostrarMensaje("¡Derrotaste al Señor de las Sombras! Eldara está a salvo.");
         }
     }
 

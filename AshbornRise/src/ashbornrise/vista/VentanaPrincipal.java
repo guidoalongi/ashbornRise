@@ -2,6 +2,7 @@ package ashbornrise.vista;
 
 import ashbornrise.controlador.ControladorBatalla;
 import ashbornrise.controlador.ControladorJuego;
+import ashbornrise.controlador.IVentanaJuego;
 import ashbornrise.modelo.Partida;
 import ashbornrise.modelo.Recompensa;
 
@@ -12,7 +13,7 @@ import java.awt.CardLayout;
 import java.awt.Dimension;
 
 /** Ventana única del juego. Cambia entre las 4 pantallas con un CardLayout. */
-public class VentanaPrincipal extends JFrame {
+public class VentanaPrincipal extends JFrame implements IVentanaJuego {
 
     private static final String INICIO = "inicio";
     private static final String JUEGO = "juego";
@@ -54,29 +55,41 @@ public class VentanaPrincipal extends JFrame {
         vistaBatalla.setControlador(cb);
     }
 
+    @Override
     public void mostrarInicio() {
         cartas.show(contenedor, INICIO);
     }
 
+    @Override
     public void mostrarJuego(Partida partida) {
         vistaJuego.actualizar(partida);
         cartas.show(contenedor, JUEGO);
     }
 
+    @Override
     public void mostrarBatalla() {
         cartas.show(contenedor, BATALLA);
     }
 
+    @Override
     public void mostrarResultadosVictoria(Recompensa recompensa, Partida partida, int rondas) {
         vistaResultados.mostrarVictoria(recompensa, partida, rondas);
         cartas.show(contenedor, RESULTADOS);
     }
 
+    @Override
     public void mostrarResultadosDerrota(int numeroBatalla) {
         vistaResultados.mostrarDerrota(numeroBatalla);
         cartas.show(contenedor, RESULTADOS);
     }
 
+    /** El mensaje se muestra en la pantalla de estado del equipo. */
+    @Override
+    public void mostrarMensaje(String mensaje) {
+        vistaJuego.mostrarMensaje(mensaje);
+    }
+
+    @Override
     public void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Ashborn Rise", JOptionPane.ERROR_MESSAGE);
     }

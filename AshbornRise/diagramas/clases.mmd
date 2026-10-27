@@ -218,6 +218,7 @@ class Accion {
 class AccionAtacar {
   -Combatiente objetivo
   +ejecutar(actor: Combatiente, batalla: Batalla) void
+  +getObjetivo() Combatiente
 }
 class AccionDefender {
   +ejecutar(actor: Combatiente, batalla: Batalla) void
@@ -226,12 +227,16 @@ class AccionHabilidad {
   -Habilidad habilidad
   -List~Combatiente~ objetivos
   +ejecutar(actor: Combatiente, batalla: Batalla) void
+  +getHabilidad() Habilidad
+  +getObjetivos() List~Combatiente~
 }
 class AccionItem {
   -Personaje usuario
   -Item item
   -Personaje objetivo
   +ejecutar(actor: Combatiente, batalla: Batalla) void
+  +getItem() Item
+  +getObjetivo() Personaje
 }
 
 %% ============================ MODELO: batalla y partida
@@ -248,6 +253,8 @@ class Batalla {
   -Combatiente actorActual
   -List~String~ registro
   -Recompensa recompensa
+  -Combatiente ultimoActor
+  -Accion ultimaAccion
   +iniciar() void
   +ejecutarTurno(actor: Combatiente, accion: Accion) void
   +ejecutarTurnoEnemigo() void
@@ -264,9 +271,19 @@ class Batalla {
   +getPersonajeActual() Personaje
   +getAliadosVivos() List~Personaje~
   +getEnemigosVivos() List~Enemigo~
+  +getUltimoActor() Combatiente
+  +getUltimaAccion() Accion
 }
 class GestorTurnos {
+  -ComparadorPorVelocidad criterio
   +calcularOrden(combatientes: List~Combatiente~) List~Combatiente~
+}
+class Comparator~T~ {
+  <<interface>>
+  +compare(a: T, b: T) int
+}
+class ComparadorPorVelocidad {
+  +compare(a: Combatiente, b: Combatiente) int
 }
 class Recompensa {
   -int experiencia
@@ -384,7 +401,7 @@ class ControladorJuego {
   +String RUTA_GUARDADO$
   -Partida partida
   -IPersistencia persistencia
-  -VentanaPrincipal ventana
+  -IVentanaJuego ventana
   -ControladorBatalla controladorBatalla
   +nuevaPartida() void
   +cargarPartida() void
@@ -399,7 +416,7 @@ class ControladorJuego {
 }
 class ControladorBatalla {
   -Batalla batalla
-  -VistaBatalla vista
+  -IVistaBatalla vista
   -ControladorJuego controladorJuego
   +iniciarBatalla(nuevaBatalla: Batalla) void
   +atacar(objetivo: Combatiente) void
@@ -409,7 +426,32 @@ class ControladorBatalla {
   +usarItem(item: Item, objetivo: Personaje) void
   +continuar() void
   -despuesDeLaAccion() void
-  -procesarTurnosEnemigos() void
+  ~continuarTurnos() void
+}
+class IVistaBatalla {
+  <<interface>>
+  +iniciarBatalla(batalla: Batalla, alTerminar: Runnable) void
+  +animarTurno(batalla: Batalla, alTerminar: Runnable) void
+  +actualizarVista(batalla: Batalla) void
+  +mostrarError(mensaje: String) void
+}
+class IVentanaJuego {
+  <<interface>>
+  +mostrarInicio() void
+  +mostrarJuego(partida: Partida) void
+  +mostrarBatalla() void
+  +mostrarResultadosVictoria(recompensa: Recompensa, partida: Partida, rondas: int) void
+  +mostrarResultadosDerrota(numeroBatalla: int) void
+  +mostrarMensaje(mensaje: String) void
+  +mostrarError(mensaje: String) void
+}
+class Runnable {
+  <<interface>>
+  +run() void
+}
+class ContinuarTurnos {
+  -ControladorBatalla controlador
+  +run() void
 }
 
 %% ============================ VISTAS
@@ -425,6 +467,7 @@ class VentanaPrincipal {
   +mostrarBatalla() void
   +mostrarResultadosVictoria(recompensa: Recompensa, partida: Partida, rondas: int) void
   +mostrarResultadosDerrota(numeroBatalla: int) void
+  +mostrarMensaje(mensaje: String) void
   +mostrarError(mensaje: String) void
   +getVistaJuego() VistaJuego
   +getVistaBatalla() VistaBatalla
@@ -448,9 +491,34 @@ class VistaBatalla {
   -Modo modo
   -Habilidad habilidadElegida
   -Item itemElegido
+  -boolean animando
+  -int lineasEnRegistro
+  -PanelArena arena
+  +iniciarBatalla(batalla: Batalla, alTerminar: Runnable) void
+  +animarTurno(batalla: Batalla, alTerminar: Runnable) void
   +actualizarVista(batalla: Batalla) void
   +mostrarError(mensaje: String) void
   +setControlador(c: ControladorBatalla) void
+}
+class PanelArena {
+  <<JPanel>>
+  -Motor3D motor
+  -Escenario escenario
+  -Coreografia coreografia
+  -Timer reloj
+  +prepararBatalla(batalla: Batalla) void
+  +animarEntrada(numeroBatalla: int, alTerminar: Runnable) void
+  +animarTurno(batalla: Batalla, lineasNuevas: List~String~, alTerminar: Runnable) void
+  +animarFinal(victoria: boolean) void
+  +estaAnimando() boolean
+  +setActual(c: Combatiente) void
+  +setSeleccionables(c: Collection~Combatiente~) void
+  +setAlHacerClic(accion: Consumer~Combatiente~) void
+}
+class Sprites {
+  <<utilidad>>
+  +icono(c: Combatiente, tamanio: int)$ ImageIcon
+  +imagenBase(c: Combatiente)$ BufferedImage
 }
 class Modo {
   <<enumeration>>
@@ -537,10 +605,18 @@ Consumible --> TipoEfectoConsumible
 
 ControladorJuego --> Partida
 ControladorJuego --> IPersistencia
-ControladorJuego --> VentanaPrincipal
+ControladorJuego --> IVentanaJuego
 ControladorJuego --> ControladorBatalla
 ControladorBatalla --> Batalla
-ControladorBatalla --> VistaBatalla
+ControladorBatalla --> IVistaBatalla
+ControladorBatalla ..> ContinuarTurnos : crea
+ContinuarTurnos --> ControladorBatalla
+Runnable <|.. ContinuarTurnos
+IVistaBatalla <|.. VistaBatalla
+IVentanaJuego <|.. VentanaPrincipal
+IVistaBatalla ..> Runnable
+Comparator <|.. ComparadorPorVelocidad
+GestorTurnos --> ComparadorPorVelocidad : criterio
 ControladorBatalla --> ControladorJuego
 ControladorBatalla ..> Accion : crea
 VentanaPrincipal *-- VistaInicio
@@ -552,8 +628,13 @@ VistaJuego --> ControladorJuego
 VistaResultados --> ControladorJuego
 VistaBatalla --> ControladorBatalla
 VistaBatalla --> Modo
+VistaBatalla *-- PanelArena : arena
+VistaBatalla ..> Sprites : usa
+PanelArena ..> Sprites : usa
+PanelArena ..> Batalla : lee
 Main ..> VentanaPrincipal : crea
 Main ..> ControladorJuego : crea
 Main ..> ControladorBatalla : crea
 VistaBatalla ..> Estilo : usa
+Batalla --> Accion : ultimaAccion
 VistaJuego ..> Estilo : usa

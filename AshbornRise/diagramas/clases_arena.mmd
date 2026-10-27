@@ -1,0 +1,115 @@
+classDiagram
+direction LR
+
+class VistaBatalla {
+  <<JPanel>>
+  -PanelArena arena
+}
+class PanelArena {
+  <<JPanel>>
+  -Motor3D motor
+  -Escenario escenario
+  -Coreografia coreografia
+  ~List~Actor3D~ actores
+  ~List~Particula~ particulas
+  -List~TextoFlotante~ textos
+  -Linea linea
+  -Runnable alTerminarLinea
+  -Timer reloj
+  +prepararBatalla(batalla: Batalla) void
+  +animarEntrada(numeroBatalla: int, alTerminar: Runnable) void
+  +animarTurno(batalla: Batalla, lineasNuevas: List~String~, alTerminar: Runnable) void
+  +animarFinal(victoria: boolean) void
+  +estaAnimando() boolean
+  +setActual(c: Combatiente) void
+  +setSeleccionables(c: Collection~Combatiente~) void
+  +setAlHacerClic(accion: Consumer~Combatiente~) void
+  ~actor(c: Combatiente) Actor3D
+  ~cartel(texto: String) void
+  ~particula(p: Particula) void
+  ~texto(a: Actor3D, texto: String, color: Color, tamanio: int) void
+  ~sacudir(fuerza: double) void
+  #paintComponent(g: Graphics) void
+}
+class Coreografia {
+  -PanelArena p
+  ~turno(l: Linea, actor: Combatiente, accion: Accion, lineas: List~String~) double
+  ~residuales(l: Linea, lineas: List~String~, t: double) void
+  ~entrada(l: Linea, numeroBatalla: int) Linea
+  ~victoria(l: Linea) Linea
+  ~derrota(l: Linea) Linea
+  ~derrumbe(a: Actor3D) void
+}
+class Motor3D {
+  ~int ancho
+  ~int alto
+  ~BufferedImage imagen
+  ~redimensionar(w: int, h: int) void
+  ~mirar(...) void
+  ~proyectar(x: double, y: double, z: double, salida: double[]) boolean
+  ~poligono(xs: double[], ys: double[], zs: double[], n: int, color: int, modo: int) void
+  ~punto(...) void
+}
+class Escenario {
+  ~List~double[]~ antorchas
+  ~dibujar(motor: Motor3D, tiempo: double, emocion: double) void
+  ~cielo(ancho: int, alto: int) int[]
+}
+class ModeloVoxel {
+  ~int anchoPx
+  ~int altoPx
+  ~desdeImagen(img: BufferedImage, espejar: boolean)$ ModeloVoxel
+  ~dibujar(motor: Motor3D, ...) void
+}
+class Actor3D {
+  ~Combatiente combatiente
+  ~ModeloVoxel modelo
+  ~double vidaMostrada
+  ~sincronizar() void
+  ~vidaPendiente() int
+  ~x() double
+  ~y() double
+  ~z() double
+}
+class Linea {
+  ~en(inicio: double, r: Runnable) void
+  ~durante(inicio: double, duracion: double, paso: DoubleConsumer) void
+  ~avanzar(dt: double) boolean
+  ~fin() double
+}
+class Particula {
+  ~actualizar(dt: double) boolean
+  ~dibujar(motor: Motor3D) void
+}
+class TextoFlotante {
+  ~String texto
+  ~actualizar(dt: double) boolean
+}
+class Sprites {
+  <<utilidad>>
+  +imagenBase(c: Combatiente)$ BufferedImage
+}
+class Combatiente {
+  <<abstract>>
+}
+class Accion {
+  <<abstract>>
+}
+
+VistaBatalla *-- PanelArena
+PanelArena *-- Motor3D
+PanelArena *-- Escenario
+PanelArena *-- Coreografia
+PanelArena "1" *-- "0..*" Actor3D
+PanelArena "1" *-- "0..*" Particula
+PanelArena "1" *-- "0..*" TextoFlotante
+PanelArena --> Linea : animacion actual
+Coreografia --> PanelArena
+Coreografia ..> Linea : arma
+Coreografia ..> Accion : lee
+Actor3D --> Combatiente : lee
+Actor3D --> ModeloVoxel
+ModeloVoxel ..> Sprites : usa
+ModeloVoxel ..> Motor3D : dibuja con
+Escenario ..> Motor3D : dibuja con
+Particula ..> Motor3D : dibuja con

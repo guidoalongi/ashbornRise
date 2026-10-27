@@ -22,7 +22,8 @@ Los sprites están dibujados en código (`vista/Sprites.java`). Para reemplazar 
 ashbornrise/
 ├── Main.java                 arma y conecta Vista, Controladores y Persistencia
 ├── modelo/                   lógica del juego (no conoce a la vista)
-│   ├── Combatiente, Batalla, GestorTurnos, Equipo, Inventario, Partida, Recompensa
+│   ├── Combatiente, Batalla, GestorTurnos, ComparadorPorVelocidad, Equipo, Inventario,
+│   │                         Partida, Recompensa
 │   ├── FabricaJuego          party inicial, ítems, enemigos y botín de cada batalla
 │   ├── EstadoBatalla, TipoRecurso
 │   ├── personajes/           Personaje, Guerrero, Mago, Arquero, Curador, TipoElemento
@@ -33,7 +34,9 @@ ashbornrise/
 │   ├── items/                Item, Consumible, TipoEfectoConsumible
 │   └── acciones/             Accion, AccionAtacar, AccionDefender, AccionHabilidad, AccionItem
 ├── persistencia/             IPersistencia, PersistenciaArchivoJSON
-├── controlador/              ControladorJuego, ControladorBatalla
+├── controlador/              ControladorJuego, ControladorBatalla,
+│                             IVentanaJuego e IVistaBatalla (lo que los controladores necesitan de la vista),
+│                             ContinuarTurnos (el Runnable que la vista ejecuta al terminar una animación)
 └── vista/                    VentanaPrincipal, VistaInicio, VistaJuego (estado del equipo),
                               VistaBatalla, VistaResultados, Estilo,
                               Sprites (pixel art de cada combatiente, dibujado en código)
@@ -42,7 +45,8 @@ ashbornrise/
                               ModeloVoxel (cada sprite convertido en un modelo de vóxeles),
                               Escenario (coliseo, público, antorchas), Coreografia (animaciones),
                               Actor3D, Particula, TextoFlotante, Linea (línea de tiempo)
-diagramas/                    diagrama de clases y 3 de secuencia (.mmd editable + .png + .svg)
+diagramas/                    diagrama de clases, diagrama del paquete arena y 3 de secuencia
+                              (.mmd editable + .png + .svg)
 ```
 
 La Vista solo **lee** el modelo para dibujarlo. Todo lo que **cambia** el modelo pasa por un controlador.
@@ -51,11 +55,11 @@ La Vista solo **lee** el modelo para dibujarlo. Todo lo que **cambia** el modelo
 
 La batalla se ve en un coliseo 3D. Cada personaje es su sprite convertido en vóxeles (un bloque por píxel, más grueso en el centro del cuerpo), así se ve en 3D pero respeta el dibujo. Cada ataque, habilidad, ítem, defensa, veneno, aturdimiento y derrota tiene su animación. Los enemigos se eligen tocándolos en la arena.
 
-Para animar, `Batalla` recuerda la última acción (`getUltimoActor()`, `getUltimaAccion()`) y `ControladorBatalla` hace jugar a los enemigos **de a uno**: ejecuta un turno, la vista lo anima y al terminar le avisa para seguir con el próximo. La vista muestra los cambios (daño, estados) recién en el momento del impacto de la animación.
+Para animar, `Batalla` recuerda la última acción (`getUltimoActor()`, `getUltimaAccion()`) y `ControladorBatalla` hace jugar a los enemigos **de a uno**: ejecuta un turno, la vista lo anima y al terminar ejecuta el `Runnable` que recibió (`ContinuarTurnos`), que le avisa al controlador que siga con el próximo. La vista muestra los cambios (daño, estados) recién en el momento del impacto de la animación.
 
 ## Cómo funciona un turno
 
-1. `Batalla.iniciar()` arma la cola de la ronda con `GestorTurnos` (de mayor a menor velocidad; los empates se sortean).
+1. `Batalla.iniciar()` arma la cola de la ronda con `GestorTurnos`, que ordena con `ComparadorPorVelocidad` (de mayor a menor velocidad; los empates se sortean).
 2. Al comienzo del turno de cada combatiente se llama a `iniciarTurno()`: se aplican sus estados (el Veneno hace daño, el Aturdimiento le hace perder el turno) y el Maná se regenera.
 3. Si le toca a un **personaje**, la vista espera que el jugador elija. El controlador arma la `Accion` y llama a `batalla.ejecutarTurno(actor, accion)`.
 4. Si le toca a un **enemigo**, `ControladorBatalla` llama a `batalla.ejecutarTurnoEnemigo()` y el enemigo elige con `decidirAccion(batalla)`.
@@ -70,8 +74,9 @@ Para animar, `Batalla` recuerda la última acción (`getUltimoActor()`, `getUlti
 | **Controlador** | `ControladorJuego` y `ControladorBatalla` reciben todos los eventos de la interfaz |
 | **Polimorfismo** | `Enemigo.decidirAccion`, `Habilidad.ejecutar`, `Accion.ejecutar`, `Item.usar`, `Personaje.aplicarMejorasDeNivel`, `Arquero.calcularDanio` (crítico), `Curador.getPoderCuracion`, `Guerrero.reaccionarAAtaque` (contraataque), `EstadoEfecto.modificarDanioRecibido / impideActuar` (sin `instanceof`) |
 | **Fabricación Pura** | `GestorTurnos`, `Recompensa`, `PersistenciaArchivoJSON`, `FabricaJuego` |
-| **Variación Protegida** | `IPersistencia` (se puede cambiar el formato sin tocar nada más), `Habilidad` y `Accion` (se agregan nuevas sin tocar `Batalla`) |
-| **Indirección** | Los controladores entre Vista y Modelo |
+| **Variación Protegida** | `IPersistencia` (se puede cambiar el formato sin tocar nada más), `IVistaBatalla` e `IVentanaJuego` (se puede cambiar la vista sin tocar los controladores), `ComparadorPorVelocidad` (otro criterio de orden sin tocar `GestorTurnos`), `Habilidad` y `Accion` (se agregan nuevas sin tocar `Batalla`) |
+| **Indirección** | Los controladores entre Vista y Modelo; `ContinuarTurnos` entre la vista y `ControladorBatalla` |
+| **Bajo Acoplamiento (MVC)** | Los controladores no importan nada de Swing: dependen de `IVistaBatalla` e `IVentanaJuego` |
 | **Bajo acoplamiento** | `Batalla.robarOro()` / `consumirItem()`: los enemigos y acciones no tocan el `Inventario` directamente |
 
 ## Decisiones tomadas (para la defensa)

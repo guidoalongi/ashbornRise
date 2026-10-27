@@ -8,6 +8,7 @@ sequenceDiagram
     participant BF as bolaDeFuego:HabilidadOfensiva
     participant G1 as goblin1:GoblinMerodeador
     participant G2 as goblin2:GoblinMerodeador
+    participant CT as continuar:ContinuarTurnos
 
     Jugador->>VB: clic "HABILIDAD" + "Bola de Fuego"
     VB->>CB: usarHabilidad(bolaDeFuego, null)
@@ -43,9 +44,10 @@ sequenceDiagram
         deactivate AH
         B->>B: verificarFin()
         deactivate B
-        CB->>CB: procesarTurnosEnemigos()
-        CB->>VB: actualizarVista(batalla)
+        CB->>CT: new ContinuarTurnos(this)
+        CB->>VB: animarTurno(batalla, continuar)
+        Note over VB,CB: la arena anima la Bola de Fuego y, al terminar,<br/>llama a continuar.run() → CB.continuarTurnos()<br/>(igual que en el diagrama de ataque)
     else recurso insuficiente
         CB->>VB: mostrarError("Maná insuficiente")
     end
-    VB-->>Jugador: muestra el resultado
+    VB-->>Jugador: muestra la animación y el resultado

@@ -4,7 +4,7 @@ sequenceDiagram
     participant CJ as ControladorJuego
     participant P as partida:Partida
     participant PJ as persistencia:PersistenciaArchivoJSON
-    participant VP as VentanaPrincipal
+    participant VP as ventana:VentanaPrincipal (IVentanaJuego)
 
     Jugador->>VJ: clic "GUARDAR PARTIDA"
     VJ->>CJ: guardarPartida()
@@ -19,9 +19,8 @@ sequenceDiagram
     PJ-->>CJ: (sin errores)
     deactivate PJ
     alt se guardó bien
-        CJ->>VP: getVistaJuego()
-        VP-->>CJ: vistaJuego
-        CJ->>VJ: mostrarMensaje("Partida guardada correctamente")
+        CJ->>VP: mostrarMensaje("Partida guardada correctamente")
+        VP->>VJ: mostrarMensaje("Partida guardada correctamente")
     else IOException
         CJ->>VP: mostrarError("No se pudo guardar la partida: ...")
     end

@@ -11,7 +11,6 @@ import ashbornrise.modelo.acciones.AccionItem;
 import ashbornrise.modelo.habilidades.Habilidad;
 import ashbornrise.modelo.items.Item;
 import ashbornrise.modelo.personajes.Personaje;
-import ashbornrise.vista.VistaBatalla;
 
 import java.util.List;
 
@@ -23,10 +22,10 @@ import java.util.List;
 public class ControladorBatalla {
 
     private Batalla batalla;
-    private VistaBatalla vista;
+    private IVistaBatalla vista;
     private ControladorJuego controladorJuego;
 
-    public ControladorBatalla(ControladorJuego controladorJuego, VistaBatalla vista) {
+    public ControladorBatalla(ControladorJuego controladorJuego, IVistaBatalla vista) {
         this.controladorJuego = controladorJuego;
         this.vista = vista;
     }
@@ -34,7 +33,7 @@ public class ControladorBatalla {
     public void iniciarBatalla(Batalla nuevaBatalla) {
         this.batalla = nuevaBatalla;
         batalla.iniciar();
-        vista.iniciarBatalla(batalla, this::continuarTurnos);
+        vista.iniciarBatalla(batalla, new ContinuarTurnos(this));
     }
 
     // ---------------------------------------------------------------- acciones del jugador
@@ -115,17 +114,18 @@ public class ControladorBatalla {
 
     /** La vista anima la acción y, cuando termina, sigue con los turnos que vengan. */
     private void despuesDeLaAccion() {
-        vista.animarTurno(batalla, this::continuarTurnos);
+        vista.animarTurno(batalla, new ContinuarTurnos(this));
     }
 
     /**
      * Juegan los enemigos de a uno (cada turno se anima antes de pasar al siguiente)
      * hasta que le toque a un personaje o termine la batalla.
+     * Lo llama ContinuarTurnos cuando la vista termina de animar (por eso no es privado).
      */
-    private void continuarTurnos() {
+    void continuarTurnos() {
         if (batalla.getEstado() == EstadoBatalla.EN_CURSO && !batalla.esTurnoDelJugador()) {
             batalla.ejecutarTurnoEnemigo();
-            vista.animarTurno(batalla, this::continuarTurnos);
+            vista.animarTurno(batalla, new ContinuarTurnos(this));
         } else {
             vista.actualizarVista(batalla);
         }

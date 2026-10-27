@@ -1,6 +1,7 @@
 package ashbornrise.vista;
 
 import ashbornrise.controlador.ControladorBatalla;
+import ashbornrise.controlador.IVistaBatalla;
 import ashbornrise.modelo.Batalla;
 import ashbornrise.modelo.Combatiente;
 import ashbornrise.modelo.EstadoBatalla;
@@ -36,7 +37,7 @@ import java.util.List;
  * La vista solo guarda "qué está eligiendo el jugador" (por ejemplo: eligió Atacar y
  * ahora tiene que tocar un enemigo). Cuando la elección está completa, se la pasa al controlador.
  */
-public class VistaBatalla extends JPanel {
+public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     /** Qué está eligiendo el jugador en este momento. */
     private enum Modo {
@@ -143,6 +144,7 @@ public class VistaBatalla extends JPanel {
     // ---------------------------------------------------------------- lo que llama el controlador
 
     /** Arma la arena con los combatientes y reproduce la entrada. */
+    @Override
     public void iniciarBatalla(Batalla batalla, Runnable alTerminar) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
@@ -158,6 +160,7 @@ public class VistaBatalla extends JPanel {
     }
 
     /** Anima el último turno ejecutado; al terminar avisa al controlador. */
+    @Override
     public void animarTurno(Batalla batalla, Runnable alTerminar) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
@@ -180,6 +183,7 @@ public class VistaBatalla extends JPanel {
     }
 
     /** Refresca la pantalla cuando le toca elegir al jugador o terminó la batalla. */
+    @Override
     public void actualizarVista(Batalla batalla) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
@@ -191,6 +195,7 @@ public class VistaBatalla extends JPanel {
         }
     }
 
+    @Override
     public void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Acción no válida", JOptionPane.WARNING_MESSAGE);
     }

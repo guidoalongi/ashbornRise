@@ -6,6 +6,8 @@ sequenceDiagram
     participant AA as accion:AccionAtacar
     participant G as guerrero:Guerrero
     participant GO as goblin:GoblinMerodeador
+    participant CT as continuar:ContinuarTurnos
+    participant PA as arena:PanelArena
 
     Jugador->>VB: clic "ATACAR" + clic en el goblin
     VB->>CB: atacar(goblin)
@@ -39,6 +41,20 @@ sequenceDiagram
         B->>B: avanzarAlSiguienteActor()
     end
     deactivate B
-    CB->>CB: procesarTurnosEnemigos()
-    CB->>VB: actualizarVista(batalla)
-    VB-->>Jugador: muestra el resultado del turno
+    CB->>CT: new ContinuarTurnos(this)
+    CB->>VB: animarTurno(batalla, continuar)
+    activate VB
+    VB->>PA: animarTurno(batalla, lineasNuevas, ...)
+    Note over VB,PA: La arena lee getUltimoActor() y getUltimaAccion()<br/>y reproduce la animación (1 o 2 segundos)
+    PA-->>VB: terminó la animación
+    VB->>CT: run()
+    deactivate VB
+    CT->>CB: continuarTurnos()
+    alt le toca a un enemigo
+        CB->>B: ejecutarTurnoEnemigo()
+        CB->>VB: animarTurno(batalla, new ContinuarTurnos(this))
+        Note over VB,B: se repite hasta que le toque a un personaje o termine la batalla
+    else le toca a un personaje
+        CB->>VB: actualizarVista(batalla)
+        VB-->>Jugador: habilita los botones para el siguiente turno
+    end
