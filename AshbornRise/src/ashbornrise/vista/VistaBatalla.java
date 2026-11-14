@@ -55,6 +55,7 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     private JLabel lblRonda;
     private JLabel lblTurno;
+    private JPanel panelOrden;
     private JLabel lblInstruccion;
     private PanelArena arena;
     private JPanel panelAliados;
@@ -77,6 +78,10 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         lblTurno = Estilo.etiqueta("", 17, Estilo.TEXTO_SUAVE);
         encabezado.add(lblRonda, BorderLayout.WEST);
         encabezado.add(lblTurno, BorderLayout.EAST);
+        // Debajo de la ronda: la fila con el orden de turnos (quién actúa y quién viene después).
+        panelOrden = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        panelOrden.setOpaque(false);
+        encabezado.add(panelOrden, BorderLayout.SOUTH);
         add(encabezado, BorderLayout.NORTH);
 
         arena = new PanelArena();
@@ -168,6 +173,7 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         bloquearEntrada();
         Combatiente actor = batalla.getUltimoActor();
         lblTurno.setText(actor != null ? "Turno de: " + actor.getNombre() : "");
+        dibujarOrdenTurnos();
         List<String> registro = batalla.getRegistro();
         int hasta = registro.size();
         List<String> nuevas = new ArrayList<>(registro.subList(Math.min(lineasEnRegistro, hasta), hasta));
@@ -233,6 +239,7 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
         dibujarAliados(actual);
         dibujarRegistro();
+        dibujarOrdenTurnos();
 
         btnAtacar.setEnabled(turnoJugador);
         btnDefender.setEnabled(turnoJugador);
@@ -296,6 +303,51 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
             carta.add(barras, BorderLayout.SOUTH);
             panelAliados.add(carta);
         }
+    }
+
+    /**
+     * Fila con el orden de turnos: primero quien está actuando (resaltado en dorado)
+     * y después los que vienen en esta ronda. Si se está animando un turno, el que
+     * actúa es el último actor; si no, el que tiene el turno ahora.
+     * Al terminar la ronda la cola se vuelve a armar, por eso solo se muestra la ronda actual.
+     */
+    private void dibujarOrdenTurnos() {
+        panelOrden.removeAll();
+        List<Combatiente> orden = new ArrayList<>();
+        if (batalla.getEstado() == EstadoBatalla.EN_CURSO) {
+            if (animando && batalla.getUltimoActor() != null) {
+                orden.add(batalla.getUltimoActor());
+            }
+            if (batalla.getActorActual() != null) {
+                orden.add(batalla.getActorActual());
+            }
+            orden.addAll(batalla.getProximosTurnos());
+        }
+        if (!orden.isEmpty()) {
+            panelOrden.add(Estilo.etiqueta("Orden de turnos:", 14, Estilo.TEXTO_SUAVE));
+        }
+        for (int i = 0; i < orden.size(); i++) {
+            if (i > 0) {
+                panelOrden.add(Estilo.etiqueta("›", 18, Estilo.TEXTO_SUAVE));
+            }
+            panelOrden.add(fichaDeTurno(orden.get(i), i == 0));
+        }
+        panelOrden.revalidate();
+        panelOrden.repaint();
+    }
+
+    /** Ficha chica con el ícono y el nombre. Los enemigos tienen fondo rojizo; el que actúa, borde dorado. */
+    private JLabel fichaDeTurno(Combatiente c, boolean actuando) {
+        JLabel ficha = new JLabel(c.getNombre(), Sprites.icono(c, 24), SwingConstants.LEFT);
+        ficha.setFont(actuando ? Estilo.fuenteNegrita(13) : Estilo.fuente(13));
+        ficha.setForeground(actuando ? Estilo.DORADO : Estilo.TEXTO);
+        ficha.setOpaque(true);
+        ficha.setBackground(c instanceof Enemigo ? Estilo.ENEMIGO : Estilo.PANEL);
+        ficha.setIconTextGap(5);
+        ficha.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(actuando ? Estilo.DORADO : Estilo.BORDE, actuando ? 2 : 1),
+                BorderFactory.createEmptyBorder(2, 6, 2, 8)));
+        return ficha;
     }
 
     private String textoEstados(Combatiente c) {

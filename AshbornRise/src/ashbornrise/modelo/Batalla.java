@@ -255,6 +255,21 @@ public class Batalla {
         return actorActual;
     }
 
+    /**
+     * Los combatientes que todavía tienen que actuar en esta ronda, en orden
+     * (sin contar al que tiene el turno ni a los derrotados). Es una copia:
+     * la vista la usa para mostrar quién viene después sin poder modificar la cola.
+     */
+    public List<Combatiente> getProximosTurnos() {
+        List<Combatiente> proximos = new ArrayList<>();
+        for (Combatiente c : colaTurnos) {
+            if (c.estaVivo()) {
+                proximos.add(c);
+            }
+        }
+        return proximos;
+    }
+
     /** Quién actuó en el último turno ejecutado (la vista lo usa para animarlo). */
     public Combatiente getUltimoActor() {
         return ultimoActor;
