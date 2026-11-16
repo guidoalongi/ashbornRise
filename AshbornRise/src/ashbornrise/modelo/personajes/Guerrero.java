@@ -3,7 +3,7 @@ package ashbornrise.modelo.personajes;
 import ashbornrise.modelo.Batalla;
 import ashbornrise.modelo.Combatiente;
 import ashbornrise.modelo.TipoRecurso;
-import ashbornrise.modelo.estados.TipoEstado;
+import ashbornrise.modelo.estados.Escudo;
 import ashbornrise.modelo.habilidades.HabilidadEstado;
 import ashbornrise.modelo.habilidades.HabilidadOfensiva;
 import ashbornrise.modelo.habilidades.TipoAlcance;
@@ -23,7 +23,7 @@ public class Guerrero extends Personaje {
         aprenderHabilidad(new HabilidadOfensiva("Golpe Devastador", 25, TipoRecurso.ENERGIA,
                 TipoAlcance.UN_ENEMIGO, 1.8, 1));
         aprenderHabilidad(new HabilidadEstado("Postura Defensiva", 15, TipoRecurso.ENERGIA,
-                TipoAlcance.PROPIO, TipoEstado.ESCUDO, 30, 2, false));
+                TipoAlcance.PROPIO, () -> new Escudo(30, 2), false));
     }
 
     /** Con cierta probabilidad devuelve un ataque básico al que lo golpeó. */

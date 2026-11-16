@@ -1,8 +1,6 @@
 package ashbornrise.vista;
 
-import ashbornrise.modelo.Combatiente;
-import ashbornrise.modelo.enemigos.Enemigo;
-import ashbornrise.modelo.enemigos.SenorDeLasSombras;
+import ashbornrise.dto.CombatienteDTO;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -30,17 +28,17 @@ public class Sprites {
 
     /** Ícono del combatiente con el alto pedido (en píxeles). El jefe final se ve más grande
      *  y los derrotados se ven grises. */
-    public static ImageIcon icono(Combatiente c, int alto) {
-        if (c instanceof SenorDeLasSombras) {
+    public static ImageIcon icono(CombatienteDTO c, int alto) {
+        if (c.isJefe()) {
             alto = alto * 3 / 2;
         }
-        String clase = c.getClass().getSimpleName();
-        boolean espejar = c instanceof Enemigo;
-        String clave = clase + "|" + alto + "|" + c.estaVivo();
+        String clase = c.getClase();
+        boolean espejar = c.isEnemigo();
+        String clave = clase + "|" + alto + "|" + c.isVivo();
         ImageIcon icono = ICONOS.get(clave);
         if (icono == null) {
             BufferedImage img = escalar(base(clase), alto, espejar);
-            if (!c.estaVivo()) {
+            if (!c.isVivo()) {
                 img = apagar(img);
             }
             icono = new ImageIcon(img);
@@ -50,8 +48,8 @@ public class Sprites {
     }
 
     /** Imagen original del sprite (sin escalar ni espejar), por ejemplo para armar el modelo 3D. */
-    public static BufferedImage imagenBase(Combatiente c) {
-        return base(c.getClass().getSimpleName());
+    public static BufferedImage imagenBase(CombatienteDTO c) {
+        return base(c.getClase());
     }
 
     private static BufferedImage base(String clase) {

@@ -10,4 +10,9 @@ public class AccionDefender extends Accion {
         actor.defenderse();
         batalla.registrar(actor.getNombre() + " se pone en guardia.");
     }
+
+    @Override
+    public TipoAccion getTipo() {
+        return TipoAccion.DEFENSA;
+    }
 }

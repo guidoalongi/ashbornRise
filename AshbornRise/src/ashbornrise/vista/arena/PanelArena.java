@@ -1,10 +1,8 @@
 package ashbornrise.vista.arena;
 
-import ashbornrise.modelo.Batalla;
-import ashbornrise.modelo.Combatiente;
-import ashbornrise.modelo.enemigos.Enemigo;
-import ashbornrise.modelo.enemigos.SenorDeLasSombras;
-import ashbornrise.modelo.personajes.Personaje;
+import ashbornrise.dto.BatallaDTO;
+import ashbornrise.dto.CombatienteDTO;
+import ashbornrise.dto.PersonajeDTO;
 import ashbornrise.vista.Sprites;
 
 import javax.swing.JPanel;
@@ -74,10 +72,10 @@ public class PanelArena extends JPanel {
     private String cartel;
     private double cartelTiempo;
 
-    private Combatiente actual;
-    private Set<Combatiente> seleccionables = new HashSet<>();
+    private int actualId = -1;
+    private Set<Integer> seleccionables = new HashSet<>();   // ids de los combatientes que se pueden tocar
     private Actor3D bajoMouse;
-    private Consumer<Combatiente> alHacerClic;
+    private Consumer<CombatienteDTO> alHacerClic;
     private final double[] proy = new double[3];
     private BufferedImage vineta;
 
@@ -89,14 +87,14 @@ public class PanelArena extends JPanel {
             @Override
             public void mouseMoved(MouseEvent e) {
                 Actor3D a = buscar(e.getX(), e.getY());
-                bajoMouse = a != null && seleccionables.contains(a.combatiente) ? a : null;
+                bajoMouse = a != null && seleccionables.contains(a.id) ? a : null;
                 setCursor(bajoMouse != null ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
             }
 
             @Override
             public void mouseClicked(MouseEvent e) {
                 Actor3D a = buscar(e.getX(), e.getY());
-                if (a != null && alHacerClic != null && seleccionables.contains(a.combatiente)) {
+                if (a != null && alHacerClic != null && seleccionables.contains(a.id)) {
                     alHacerClic.accept(a.combatiente);
                 }
             }
@@ -110,22 +108,22 @@ public class PanelArena extends JPanel {
     // ---------------------------------------------------------------- API para la vista
 
     /** Arma la escena con los combatientes de la batalla. */
-    public void prepararBatalla(Batalla batalla) {
+    public void prepararBatalla(BatallaDTO batalla) {
         actores.clear();
         particulas.clear();
         textos.clear();
         linea = null;
         alTerminarLinea = null;
-        actual = null;
+        actualId = -1;
         seleccionables.clear();
-        List<Personaje> aliados = batalla.getAliados();
+        List<PersonajeDTO> aliados = batalla.getAliados();
         for (int i = 0; i < aliados.size(); i++) {
             Actor3D a = crearActor(aliados.get(i));
             a.baseX = -2.6 - 0.6 * i;
             a.baseZ = (aliados.size() - 1) * 1.45 / 2 - 1.45 * i + 0.3;
             actores.add(a);
         }
-        List<Enemigo> enemigos = batalla.getEnemigos();
+        List<CombatienteDTO> enemigos = batalla.getEnemigos();
         for (int i = 0; i < enemigos.size(); i++) {
             Actor3D a = crearActor(enemigos.get(i));
             a.baseX = 2.7 + 0.6 * i;
@@ -148,9 +146,10 @@ public class PanelArena extends JPanel {
     }
 
     /** Anima lo que pasó en el último turno ejecutado. */
-    public void animarTurno(Batalla batalla, List<String> lineasNuevas, Runnable alTerminar) {
+    public void animarTurno(BatallaDTO batalla, List<String> lineasNuevas, Runnable alTerminar) {
+        actualizarCombatientes(batalla);
         Linea l = nuevaLinea();
-        double fin = coreografia.turno(l, batalla.getUltimoActor(), batalla.getUltimaAccion(), lineasNuevas);
+        double fin = coreografia.turno(l, batalla.getUltimoTurno(), lineasNuevas);
         l.en(fin, () -> coreografia.residuales(l, lineasNuevas, fin));
         iniciarLinea(l, alTerminar);
     }
@@ -163,27 +162,44 @@ public class PanelArena extends JPanel {
         return linea != null;
     }
 
-    public void setActual(Combatiente c) {
-        actual = c;
+    /**
+     * Cada actor recibe la foto nueva de su combatiente. La diferencia con la foto anterior
+     * (vida perdida, estados nuevos) es lo que después se anima.
+     */
+    public void actualizarCombatientes(BatallaDTO batalla) {
+        for (Actor3D a : actores) {
+            CombatienteDTO nuevo = batalla.buscar(a.id);
+            if (nuevo != null) {
+                a.actualizar(nuevo);
+            }
+        }
     }
 
-    public void setSeleccionables(Collection<? extends Combatiente> cs) {
-        seleccionables = new HashSet<>(cs);
-        if (bajoMouse != null && !seleccionables.contains(bajoMouse.combatiente)) {
+    /** Id del combatiente que tiene el turno (-1 si ninguno). */
+    public void setActual(int id) {
+        actualId = id;
+    }
+
+    public void setSeleccionables(Collection<? extends CombatienteDTO> cs) {
+        seleccionables = new HashSet<>();
+        for (CombatienteDTO c : cs) {
+            seleccionables.add(c.getId());
+        }
+        if (bajoMouse != null && !seleccionables.contains(bajoMouse.id)) {
             bajoMouse = null;
             setCursor(Cursor.getDefaultCursor());
         }
     }
 
-    public void setAlHacerClic(Consumer<Combatiente> alHacerClic) {
+    public void setAlHacerClic(Consumer<CombatienteDTO> alHacerClic) {
         this.alHacerClic = alHacerClic;
     }
 
     // ---------------------------------------------------------------- ayudas para Coreografia
 
-    Actor3D actor(Combatiente c) {
+    Actor3D actor(int id) {
         for (Actor3D a : actores) {
-            if (a.combatiente == c) {
+            if (a.id == id) {
                 return a;
             }
         }
@@ -289,15 +305,15 @@ public class PanelArena extends JPanel {
 
     // ---------------------------------------------------------------- privado
 
-    private Actor3D crearActor(Combatiente c) {
-        boolean enemigo = c instanceof Enemigo;
-        String clave = c.getClass().getName() + enemigo;
+    private Actor3D crearActor(CombatienteDTO c) {
+        boolean enemigo = c.isEnemigo();
+        String clave = c.getClase() + enemigo;
         ModeloVoxel m = MODELOS.get(clave);
         if (m == null) {
             m = ModeloVoxel.desdeImagen(Sprites.imagenBase(c), enemigo);
             MODELOS.put(clave, m);
         }
-        double escala = c instanceof SenorDeLasSombras ? 0.088 : 0.068;
+        double escala = c.isJefe() ? 0.088 : 0.068;
         return new Actor3D(c, m, escala, enemigo ? -1 : 1);
     }
 
@@ -507,11 +523,11 @@ public class PanelArena extends JPanel {
         if (a == bajoMouse) {
             color = 0xffd860;
             r = 0.72;
-        } else if (seleccionables.contains(a.combatiente)) {
+        } else if (seleccionables.contains(a.id)) {
             double p = 0.55 + 0.45 * Math.sin(tiempo * 6);
             color = Motor3D.escalarColor(0xd0b060, p);
             r = 0.66;
-        } else if (a.combatiente == actual) {
+        } else if (a.id == actualId) {
             color = Motor3D.escalarColor(0xe0b050, 0.8 + 0.2 * Math.sin(tiempo * 3));
             r = 0.66;
         } else {
@@ -574,16 +590,16 @@ public class PanelArena extends JPanel {
             return;
         }
         int x = (int) (proy[0] * PIXEL), y = (int) (proy[1] * PIXEL);
-        int ancho = a.combatiente instanceof SenorDeLasSombras ? 120 : 76;
+        int ancho = a.combatiente.isJefe() ? 120 : 76;
         int alto = 7;
-        double frac = Math.max(0, a.vidaMostrada / a.combatiente.getVidaMaximo());
+        double frac = Math.max(0, a.vidaMostrada / a.combatiente.getVidaMaxima());
         g.setFont(new Font(Font.SERIF, Font.BOLD, 12));
         String nombre = a.combatiente.getNombre();
         FontMetrics fm = g.getFontMetrics();
         int tx = x - fm.stringWidth(nombre) / 2;
         g.setColor(new Color(0, 0, 0, 170));
         g.drawString(nombre, tx + 1, y - 5);
-        g.setColor(a.combatiente == actual ? new Color(255, 220, 120) : new Color(236, 228, 210));
+        g.setColor(a.id == actualId ? new Color(255, 220, 120) : new Color(236, 228, 210));
         g.drawString(nombre, tx, y - 6);
         g.setColor(new Color(10, 6, 14, 200));
         g.fillRect(x - ancho / 2 - 1, y - 1, ancho + 2, alto + 2);
@@ -595,7 +611,7 @@ public class PanelArena extends JPanel {
     }
 
     private void flechaTurno(Graphics2D g) {
-        Actor3D a = actor(actual);
+        Actor3D a = actor(actualId);
         if (a == null || !a.vivo || linea != null) {
             return;
         }

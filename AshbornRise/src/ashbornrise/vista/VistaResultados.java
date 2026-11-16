@@ -1,10 +1,9 @@
 package ashbornrise.vista;
 
 import ashbornrise.controlador.ControladorJuego;
-import ashbornrise.modelo.Partida;
-import ashbornrise.modelo.Recompensa;
-import ashbornrise.modelo.items.Item;
-import ashbornrise.modelo.personajes.Personaje;
+import ashbornrise.dto.PartidaDTO;
+import ashbornrise.dto.PersonajeDTO;
+import ashbornrise.dto.RecompensaDTO;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -35,7 +34,7 @@ public class VistaResultados extends JPanel {
         add(contenido, BorderLayout.CENTER);
     }
 
-    public void mostrarVictoria(Recompensa recompensa, Partida partida, int rondas) {
+    public void mostrarVictoria(RecompensaDTO recompensa, PartidaDTO partida, int rondas) {
         contenido.removeAll();
         agregarCentrado(Estilo.etiqueta("¡ VICTORIA !", 56, Estilo.DORADO));
         agregarCentrado(Estilo.etiqueta("El equipo derrotó a todos los enemigos en la Ronda " + rondas,
@@ -48,19 +47,19 @@ public class VistaResultados extends JPanel {
         exp.add(Estilo.etiqueta("EXPERIENCIA Y PROGRESIÓN  —  +" + recompensa.getExperienciaPorPersonaje()
                 + " EXP para cada personaje en pie", 14, Estilo.DORADO));
         exp.add(Box.createRigidArea(new Dimension(0, 10)));
-        for (Personaje p : partida.getEquipo().getIntegrantes()) {
+        for (PersonajeDTO p : partida.getPersonajes()) {
             JPanel fila = new JPanel(new BorderLayout());
             fila.setOpaque(false);
             fila.add(Estilo.etiqueta(p.getNombre() + " (" + p.getNombreClase() + ")  ·  Nvl. " + p.getNivel(),
                     18, Estilo.TEXTO), BorderLayout.WEST);
-            fila.add(Estilo.etiqueta(p.getExperiencia() + " / " + p.experienciaParaSubir() + " EXP",
+            fila.add(Estilo.etiqueta(p.getExperiencia() + " / " + p.getExperienciaParaSubir() + " EXP",
                     14, Estilo.DORADO), BorderLayout.EAST);
             fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
             fila.setAlignmentX(Component.LEFT_ALIGNMENT);
             exp.add(fila);
             JPanel barra = new JPanel(new BorderLayout());
             barra.setOpaque(false);
-            barra.add(Estilo.barra(p.getExperiencia(), p.experienciaParaSubir(), Estilo.EXPERIENCIA));
+            barra.add(Estilo.barra(p.getExperiencia(), p.getExperienciaParaSubir(), Estilo.EXPERIENCIA));
             barra.setMaximumSize(new Dimension(Integer.MAX_VALUE, 12));
             barra.setAlignmentX(Component.LEFT_ALIGNMENT);
             exp.add(barra);
@@ -79,9 +78,7 @@ public class VistaResultados extends JPanel {
         botin.add(Box.createRigidArea(new Dimension(0, 8)));
         List<String> chips = new ArrayList<>();
         chips.add("Oro +" + recompensa.getOro());
-        for (Item item : recompensa.getItems()) {
-            chips.add(item.getNombre());
-        }
+        chips.addAll(recompensa.getItems());
         botin.add(filaDeChips(chips));
         agregarTarjeta(botin);
         contenido.add(Box.createRigidArea(new Dimension(0, 24)));

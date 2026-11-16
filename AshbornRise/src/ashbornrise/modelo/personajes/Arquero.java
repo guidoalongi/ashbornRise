@@ -1,7 +1,7 @@
 package ashbornrise.modelo.personajes;
 
 import ashbornrise.modelo.TipoRecurso;
-import ashbornrise.modelo.estados.TipoEstado;
+import ashbornrise.modelo.estados.Veneno;
 import ashbornrise.modelo.habilidades.HabilidadEstado;
 import ashbornrise.modelo.habilidades.HabilidadOfensiva;
 import ashbornrise.modelo.habilidades.TipoAlcance;
@@ -21,7 +21,7 @@ public class Arquero extends Personaje {
         aprenderHabilidad(new HabilidadOfensiva("Disparo Múltiple", 20, TipoRecurso.ENERGIA,
                 TipoAlcance.VARIOS_ENEMIGOS, 1.0, 2));
         aprenderHabilidad(new HabilidadEstado("Flecha Envenenada", 18, TipoRecurso.ENERGIA,
-                TipoAlcance.UN_ENEMIGO, TipoEstado.VENENO, 6, 3, false));
+                TipoAlcance.UN_ENEMIGO, () -> new Veneno(6, 3), false));
     }
 
     /** Redefine el cálculo de daño: a veces es crítico. Vale para ataques y habilidades ofensivas. */

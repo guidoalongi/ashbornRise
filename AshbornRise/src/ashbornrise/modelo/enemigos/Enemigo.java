@@ -54,6 +54,11 @@ public abstract class Enemigo extends Combatiente {
         return elegido;
     }
 
+    /** ¿Es un jefe? Por defecto no; el Señor de las Sombras lo redefine (la vista lo dibuja más grande). */
+    public boolean esJefe() {
+        return false;
+    }
+
     public int getExperienciaOtorgada() {
         return experienciaOtorgada;
     }

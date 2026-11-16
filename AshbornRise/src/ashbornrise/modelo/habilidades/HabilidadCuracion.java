@@ -30,6 +30,11 @@ public class HabilidadCuracion extends Habilidad {
     }
 
     @Override
+    public boolean curaVida() {
+        return true;
+    }
+
+    @Override
     public int getCantidadObjetivos() {
         return cantidadObjetivos;
     }

@@ -45,6 +45,16 @@ public class Inventario {
         return distintos;
     }
 
+    /** Primer ítem con ese nombre, o null si no hay ninguno. */
+    public Item buscarPorNombre(String nombreItem) {
+        for (Item i : items) {
+            if (i.getNombre().equals(nombreItem)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
     public int cantidadDe(String nombreItem) {
         int cantidad = 0;
         for (Item i : items) {

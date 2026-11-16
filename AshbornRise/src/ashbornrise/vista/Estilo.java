@@ -1,7 +1,5 @@
 package ashbornrise.vista;
 
-import ashbornrise.modelo.TipoRecurso;
-
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -69,15 +67,15 @@ public class Estilo {
         return barra;
     }
 
-    public static Color colorRecurso(TipoRecurso tipo) {
-        if (tipo == TipoRecurso.MANA) {
+    public static Color colorRecurso(boolean usaMana) {
+        if (usaMana) {
             return MANA;
         }
         return ENERGIA;
     }
 
-    public static String nombreRecurso(TipoRecurso tipo) {
-        if (tipo == TipoRecurso.MANA) {
+    public static String nombreRecurso(boolean usaMana) {
+        if (usaMana) {
             return "Maná";
         }
         return "Energía";

@@ -1,15 +1,8 @@
 package ashbornrise.vista.arena;
 
-import ashbornrise.modelo.Combatiente;
-import ashbornrise.modelo.acciones.Accion;
-import ashbornrise.modelo.acciones.AccionAtacar;
-import ashbornrise.modelo.acciones.AccionDefender;
-import ashbornrise.modelo.acciones.AccionHabilidad;
-import ashbornrise.modelo.acciones.AccionItem;
-import ashbornrise.modelo.estados.TipoEstado;
-import ashbornrise.modelo.habilidades.Habilidad;
-import ashbornrise.modelo.habilidades.HabilidadCuracion;
-import ashbornrise.modelo.habilidades.HabilidadEstado;
+import ashbornrise.dto.EfectoDTO;
+import ashbornrise.dto.TipoAccionDTO;
+import ashbornrise.dto.TurnoDTO;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -36,18 +29,23 @@ class Coreografia {
     // ---------------------------------------------------------------- turno
 
     /** Agrega a la línea la animación del turno y devuelve cuándo termina. */
-    double turno(Linea l, Combatiente actorC, Accion accion, List<String> lineas) {
-        Actor3D a = p.actor(actorC);
-        if (a == null || accion == null || lineas.isEmpty()) {
+    double turno(Linea l, TurnoDTO turno, List<String> lineas) {
+        if (turno == null || lineas.isEmpty()) {
             return 0;
         }
+        Actor3D a = p.actor(turno.getActorId());
+        if (a == null) {
+            return 0;
+        }
+        TipoAccionDTO tipoAccion = turno.getTipo();
+        Actor3D primerObjetivo = turno.getObjetivos().isEmpty() ? null : p.actor(turno.getObjetivos().get(0));
         double t = 0;
         if (contiene(lineas, "segunda fase")) {
             t = segundaFase(l, a);
         }
-        String nombre = actorC.getNombre();
-        if (accion instanceof AccionAtacar) {
-            Actor3D o = p.actor(((AccionAtacar) accion).getObjetivo());
+        String nombre = a.combatiente.getNombre();
+        if (tipoAccion == TipoAccionDTO.ATAQUE) {
+            Actor3D o = primerObjetivo;
             if (o == null) {
                 return t;
             }
@@ -60,20 +58,18 @@ class Coreografia {
             } else {
                 t = cuerpoACuerpo(l, t, a, o, clase(a).equals("AranaVenenosa") ? 0.9 : 0.35, () -> efectoGolpe(a, o, lineas));
             }
-            if (contiene(lineas, "contraataca") && o.combatiente.estaVivo()) {
+            if (contiene(lineas, "contraataca") && o.combatiente.isVivo()) {
                 t = contraataque(l, t, o, a);
             }
-        } else if (accion instanceof AccionHabilidad) {
-            AccionHabilidad ah = (AccionHabilidad) accion;
-            p.cartel(nombre + " usa " + ah.getHabilidad().getNombre());
-            t = habilidad(l, t, a, ah.getHabilidad(), actores(ah.getObjetivos()));
-        } else if (accion instanceof AccionDefender) {
+        } else if (tipoAccion == TipoAccionDTO.HABILIDAD) {
+            p.cartel(nombre + " usa " + turno.getNombreUsado());
+            t = habilidad(l, t, a, turno.getNombreUsado(), turno.getEfecto(), actores(turno.getObjetivos()));
+        } else if (tipoAccion == TipoAccionDTO.DEFENSA) {
             p.cartel(nombre + " se pone en guardia");
             t = defensa(l, t, a);
-        } else if (accion instanceof AccionItem) {
-            AccionItem ai = (AccionItem) accion;
-            p.cartel(nombre + " usa " + ai.getItem().getNombre());
-            t = item(l, t, a, p.actor(ai.getObjetivo()), ai.getItem().getNombre());
+        } else if (tipoAccion == TipoAccionDTO.ITEM && primerObjetivo != null) {
+            p.cartel(nombre + " usa " + turno.getNombreUsado());
+            t = item(l, t, a, primerObjetivo, turno.getNombreUsado());
         }
         return t;
     }
@@ -84,7 +80,7 @@ class Coreografia {
         boolean hubo = false;
         for (Actor3D a : p.actores) {
             int d = a.vidaPendiente();
-            if (d < 0 && (a.veneno || a.combatiente.tieneEstado(TipoEstado.VENENO) || contiene(lineas, a.combatiente.getNombre() + " sufre"))) {
+            if (d < 0 && (a.veneno || a.combatiente.isEnvenenado() || contiene(lineas, a.combatiente.getNombre() + " sufre"))) {
                 double ti = t;
                 l.en(ti, () -> {
                     nubeVeneno(a.x(), a.alto() * 0.5, a.z(), 0.8);
@@ -287,8 +283,10 @@ class Coreografia {
 
     // ---------------------------------------------------------------- habilidades
 
-    private double habilidad(Linea l, double t0, Actor3D a, Habilidad h, List<Actor3D> objetivos) {
-        switch (h.getNombre()) {
+    /** Las habilidades conocidas tienen su animación propia; las demás se animan según su efecto. */
+    private double habilidad(Linea l, double t0, Actor3D a, String nombreHabilidad, EfectoDTO efecto,
+                             List<Actor3D> objetivos) {
+        switch (nombreHabilidad) {
             case "Golpe Devastador":
                 return golpeDevastador(l, t0, a, objetivos);
             case "Postura Defensiva":
@@ -308,15 +306,14 @@ class Coreografia {
             case "Curación Oscura":
                 return curacion(l, t0, a, objetivos, 0x70ff80, 0xa040d0);
             default:
-                if (h instanceof HabilidadCuracion) {
+                if (efecto == EfectoDTO.CURACION) {
                     return curacion(l, t0, a, objetivos, 0xfff0a0, 0x70ff90);
                 }
-                if (h instanceof HabilidadEstado) {
-                    TipoEstado e = ((HabilidadEstado) h).getEfectoAplicado();
-                    if (e == TipoEstado.ESCUDO) {
-                        return aura(l, t0, a, objetivos, 0x80c0ff, 0x60c0ff);
-                    }
-                    return disparo(l, t0, a, objetivos, e == TipoEstado.VENENO ? VERDE : LUZ, 0.12, 0.6);
+                if (efecto == EfectoDTO.ESCUDO) {
+                    return aura(l, t0, a, objetivos, 0x80c0ff, 0x60c0ff);
+                }
+                if (efecto == EfectoDTO.VENENO || efecto == EfectoDTO.ATURDIMIENTO) {
+                    return disparo(l, t0, a, objetivos, efecto == EfectoDTO.VENENO ? VERDE : LUZ, 0.12, 0.6);
                 }
                 return disparo(l, t0, a, objetivos, ARCANO, 0.15, 0.8);
         }
@@ -611,7 +608,7 @@ class Coreografia {
                     chispas(a.x(), 0.1, a.z(), 0x302030, 14, 1.5, 0.16, 1.0, -0.3, false);
                 });
                 l.durante(inicio, 0.65, k -> a.oy = bajo * (1 - Linea.suave(k)));
-                if (a.combatiente instanceof ashbornrise.modelo.enemigos.SenorDeLasSombras) {
+                if (a.combatiente.isJefe()) {
                     jefe = true;
                 }
             }
@@ -878,10 +875,10 @@ class Coreografia {
         return new double[]{a.x() + a.frente * a.ancho() * 0.35, a.y() + a.alto() * 0.6, a.z() - 0.1};
     }
 
-    private List<Actor3D> actores(List<Combatiente> cs) {
+    private List<Actor3D> actores(List<Integer> ids) {
         List<Actor3D> lista = new ArrayList<>();
-        for (Combatiente c : cs) {
-            Actor3D a = p.actor(c);
+        for (int id : ids) {
+            Actor3D a = p.actor(id);
             if (a != null) {
                 lista.add(a);
             }
@@ -890,7 +887,7 @@ class Coreografia {
     }
 
     private static String clase(Actor3D a) {
-        return a.combatiente.getClass().getSimpleName();
+        return a.combatiente.getClase();
     }
 
     /** Tipo de proyectil del ataque básico, o -1 si pelea cuerpo a cuerpo. */

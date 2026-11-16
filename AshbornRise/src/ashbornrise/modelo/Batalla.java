@@ -1,6 +1,7 @@
 package ashbornrise.modelo;
 
 import ashbornrise.modelo.acciones.Accion;
+import ashbornrise.modelo.acciones.AccionDefender;
 import ashbornrise.modelo.enemigos.Enemigo;
 import ashbornrise.modelo.habilidades.Habilidad;
 import ashbornrise.modelo.habilidades.TipoAlcance;
@@ -13,7 +14,7 @@ import java.util.List;
 /**
  * Motor de combate por turnos.
  * - Arma la cola de turnos de cada ronda (con ayuda de GestorTurnos).
- * - Ejecuta la acción de quien tiene el turno.
+ * - Valida y ejecuta la acción de quien tiene el turno (el modelo no acepta jugadas inválidas).
  * - Verifica si la batalla terminó y crea la Recompensa (Creador).
  */
 public class Batalla {
@@ -57,11 +58,23 @@ public class Batalla {
         avanzarAlSiguienteActor();
     }
 
-    /** Ejecuta la acción elegida para el combatiente que tiene el turno. */
+    /**
+     * Ejecuta la acción elegida para el combatiente que tiene el turno.
+     * Antes la valida: si rompe alguna regla, lanza AccionInvalidaException y no pasa nada
+     * (el turno sigue siendo del mismo combatiente). Esto vale aunque la llamada venga
+     * de cualquier parte del sistema, no solo de la vista.
+     */
     public void ejecutarTurno(Combatiente actor, Accion accion) {
-        if (estado != EstadoBatalla.EN_CURSO || actor != actorActual) {
-            return;
+        if (estado != EstadoBatalla.EN_CURSO) {
+            throw new AccionInvalidaException("La batalla ya terminó.");
         }
+        if (actor == null || actor != actorActual) {
+            throw new AccionInvalidaException("No es el turno de ese combatiente.");
+        }
+        if (accion == null) {
+            throw new AccionInvalidaException("Falta indicar la acción.");
+        }
+        accion.validar(actor, this);
         ultimoActor = actor;
         ultimaAccion = accion;
         accion.ejecutar(actor, this);
@@ -73,12 +86,22 @@ public class Batalla {
         }
     }
 
-    /** Si el turno es de un enemigo, este decide solo qué hacer. */
+    /**
+     * Si el turno es de un enemigo, este decide solo qué hacer. Si lo que decide no fuera válido,
+     * se defiende en su lugar (la IA tampoco puede saltarse las reglas).
+     */
     public void ejecutarTurnoEnemigo() {
         Enemigo enemigo = buscarEnemigo(actorActual);
-        if (enemigo != null) {
-            ejecutarTurno(enemigo, enemigo.decidirAccion(this));
+        if (enemigo == null) {
+            return;
         }
+        Accion accion = enemigo.decidirAccion(this);
+        try {
+            accion.validar(enemigo, this);
+        } catch (AccionInvalidaException e) {
+            accion = new AccionDefender();
+        }
+        ejecutarTurno(enemigo, accion);
     }
 
     public EstadoBatalla verificarFin() {
@@ -180,15 +203,20 @@ public class Batalla {
 
     // ---------------------------------------------------------------- ayudas para acciones
 
-    /** Decide a quién afecta una habilidad según su alcance (Batalla conoce a todos: Experto). */
-    public List<Combatiente> resolverObjetivos(Habilidad h, Personaje origen, Combatiente elegido) {
+    /**
+     * Decide a quién afecta una habilidad según su alcance (Batalla conoce a todos: Experto).
+     * Para PROPIO y VARIOS_ENEMIGOS los elige solo; para UN_ENEMIGO / UN_ALIADO usa el elegido.
+     * No valida: la validación la hace la acción cuando se ejecuta.
+     */
+    public List<Combatiente> resolverObjetivos(Habilidad h, Combatiente origen, Combatiente elegido) {
         List<Combatiente> objetivos = new ArrayList<>();
         if (h.getAlcance() == TipoAlcance.PROPIO) {
             objetivos.add(origen);
         } else if (h.getAlcance() == TipoAlcance.VARIOS_ENEMIGOS) {
-            List<Enemigo> vivos = getEnemigosVivos();
-            for (int i = 0; i < vivos.size() && i < h.getCantidadObjetivos(); i++) {
-                objetivos.add(vivos.get(i));
+            for (Combatiente c : getCombatientes()) {
+                if (objetivos.size() < h.getCantidadObjetivos() && h.getAlcance().admite(origen, c)) {
+                    objetivos.add(c);
+                }
             }
         } else if (elegido != null) {
             objetivos.add(elegido);
@@ -196,12 +224,13 @@ public class Batalla {
         return objetivos;
     }
 
-    public int robarOro(int cantidad) {
-        return inventario.quitarOro(cantidad);
+    /** ¿Este combatiente es parte de esta batalla (aliado o enemigo)? */
+    public boolean participa(Combatiente c) {
+        return getCombatientes().contains(c);
     }
 
-    public void consumirItem(Item item) {
-        inventario.quitarItem(item);
+    public int robarOro(int cantidad) {
+        return inventario.quitarOro(cantidad);
     }
 
     public void registrar(String mensaje) {
@@ -231,6 +260,13 @@ public class Batalla {
 
     public List<Personaje> getAliados() {
         return aliados.getIntegrantes();
+    }
+
+    /** Todos los participantes: primero los aliados y después los enemigos (siempre en el mismo orden). */
+    public List<Combatiente> getCombatientes() {
+        List<Combatiente> todos = new ArrayList<>(aliados.getIntegrantes());
+        todos.addAll(enemigos);
+        return todos;
     }
 
     public List<Enemigo> getEnemigos() {

@@ -1,17 +1,20 @@
 package ashbornrise.controlador;
 
+import ashbornrise.modelo.AccionInvalidaException;
 import ashbornrise.modelo.Batalla;
 import ashbornrise.modelo.EstadoBatalla;
 import ashbornrise.modelo.FabricaJuego;
 import ashbornrise.modelo.Partida;
 import ashbornrise.modelo.Recompensa;
 import ashbornrise.modelo.items.Item;
+import ashbornrise.modelo.items.TipoRanura;
 import ashbornrise.modelo.personajes.Personaje;
 import ashbornrise.persistencia.IPersistencia;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Controlador (GRASP) de los eventos "generales" del juego: nueva partida, cargar,
@@ -40,13 +43,13 @@ public class ControladorJuego {
 
     public void nuevaPartida() {
         partida = FabricaJuego.crearPartidaNueva();
-        ventana.mostrarJuego(partida);
+        ventana.mostrarJuego(EnsambladorDTO.partida(partida));
     }
 
     public void cargarPartida() {
         try {
             partida = persistencia.cargar(RUTA_GUARDADO);
-            ventana.mostrarJuego(partida);
+            ventana.mostrarJuego(EnsambladorDTO.partida(partida));
             ventana.mostrarMensaje("Partida cargada (guardada el " + partida.getFechaGuardado() + ")");
         } catch (IOException e) {
             ventana.mostrarError("No se pudo cargar la partida: " + e.getMessage());
@@ -70,19 +73,36 @@ public class ControladorJuego {
         }
     }
 
-    /** Usa un ítem fuera de batalla sobre un personaje del equipo. */
-    public void usarItem(Item item, Personaje objetivo) {
-        if (item == null || objetivo == null || !partida.getInventario().contiene(item)) {
-            return;
+    /**
+     * Usa (o equipa) un ítem fuera de batalla sobre un personaje del equipo.
+     * La vista manda el nombre del ítem y la posición del personaje; las reglas las valida Partida.
+     */
+    public void usarItem(String nombreItem, int indicePersonaje) {
+        Item item = partida.getInventario().buscarPorNombre(nombreItem);
+        try {
+            String resultado = partida.usarItem(item, personaje(indicePersonaje));
+            ventana.mostrarJuego(EnsambladorDTO.partida(partida));
+            ventana.mostrarMensaje(resultado);
+        } catch (AccionInvalidaException e) {
+            ventana.mostrarError(e.getMessage());
         }
-        if (!objetivo.estaVivo()) {
-            ventana.mostrarError(objetivo.getNombre() + " está fuera de combate.");
-            return;
+    }
+
+    /** Saca lo que el personaje tiene en esa ranura ("ARMA", "ARMADURA", "ACCESORIO") y lo guarda en el inventario. */
+    public void desequipar(int indicePersonaje, String ranura) {
+        try {
+            String resultado = partida.desequipar(personaje(indicePersonaje), TipoRanura.valueOf(ranura));
+            ventana.mostrarJuego(EnsambladorDTO.partida(partida));
+            ventana.mostrarMensaje(resultado);
+        } catch (AccionInvalidaException | IllegalArgumentException e) {
+            ventana.mostrarError(e.getMessage());
         }
-        String resultado = objetivo.usarItem(item, objetivo);
-        partida.getInventario().quitarItem(item);
-        ventana.mostrarJuego(partida);
-        ventana.mostrarMensaje(resultado);
+    }
+
+    /** De la posición que usa la vista al personaje del modelo (null si no existe). */
+    private Personaje personaje(int indice) {
+        List<Personaje> integrantes = partida.getEquipo().getIntegrantes();
+        return indice >= 0 && indice < integrantes.size() ? integrantes.get(indice) : null;
     }
 
     public void siguienteBatalla() {
@@ -102,7 +122,8 @@ public class ControladorJuego {
         if (batalla.getEstado() == EstadoBatalla.VICTORIA) {
             Recompensa recompensa = batalla.otorgarRecompensas();
             partida.registrarVictoria();
-            ventana.mostrarResultadosVictoria(recompensa, partida, batalla.getRonda());
+            ventana.mostrarResultadosVictoria(EnsambladorDTO.recompensa(recompensa),
+                    EnsambladorDTO.partida(partida), batalla.getRonda());
         } else {
             ventana.mostrarResultadosDerrota(batalla.getNumeroBatalla());
         }
@@ -115,7 +136,7 @@ public class ControladorJuego {
     }
 
     public void continuarTrasResultados() {
-        ventana.mostrarJuego(partida);
+        ventana.mostrarJuego(EnsambladorDTO.partida(partida));
         if (partida.estaCompleta()) {
             ventana.mostrarMensaje("¡Derrotaste al Señor de las Sombras! Eldara está a salvo.");
         }
@@ -123,9 +144,5 @@ public class ControladorJuego {
 
     public void volverAlInicio() {
         ventana.mostrarInicio();
-    }
-
-    public Partida getPartida() {
-        return partida;
     }
 }

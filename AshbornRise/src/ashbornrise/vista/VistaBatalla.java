@@ -2,16 +2,12 @@ package ashbornrise.vista;
 
 import ashbornrise.controlador.ControladorBatalla;
 import ashbornrise.controlador.IVistaBatalla;
-import ashbornrise.modelo.Batalla;
-import ashbornrise.modelo.Combatiente;
-import ashbornrise.modelo.EstadoBatalla;
-import ashbornrise.modelo.Inventario;
-import ashbornrise.modelo.enemigos.Enemigo;
-import ashbornrise.modelo.estados.EstadoEfecto;
-import ashbornrise.modelo.habilidades.Habilidad;
-import ashbornrise.modelo.habilidades.TipoAlcance;
-import ashbornrise.modelo.items.Item;
-import ashbornrise.modelo.personajes.Personaje;
+import ashbornrise.dto.AlcanceDTO;
+import ashbornrise.dto.BatallaDTO;
+import ashbornrise.dto.CombatienteDTO;
+import ashbornrise.dto.HabilidadDTO;
+import ashbornrise.dto.ItemDTO;
+import ashbornrise.dto.PersonajeDTO;
 import ashbornrise.vista.arena.PanelArena;
 
 import javax.swing.BorderFactory;
@@ -23,7 +19,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -34,8 +29,12 @@ import java.util.List;
 /**
  * Pantalla de batalla: arriba la arena 3D (donde se ven y se eligen los combatientes),
  * abajo el estado del equipo, el menú de acciones y el registro.
- * La vista solo guarda "qué está eligiendo el jugador" (por ejemplo: eligió Atacar y
- * ahora tiene que tocar un enemigo). Cuando la elección está completa, se la pasa al controlador.
+ *
+ * Recibe una "foto" de la batalla (BatallaDTO) y nunca toca el modelo. Solo guarda "qué está
+ * eligiendo el jugador" (por ejemplo: eligió Atacar y ahora tiene que tocar un enemigo). Cuando
+ * la elección está completa, le pasa al controlador los ids / índices / nombres elegidos.
+ * Las reglas (a quién se puede atacar, qué objetivos admite una habilidad) las valida el modelo:
+ * acá solo se resaltan los objetivos razonables para que la interfaz sea cómoda.
  */
 public class VistaBatalla extends JPanel implements IVistaBatalla {
 
@@ -45,10 +44,10 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
     }
 
     private ControladorBatalla controlador;
-    private Batalla batalla;
+    private BatallaDTO batalla;
     private Modo modo = Modo.NINGUNO;
-    private Habilidad habilidadElegida;
-    private Item itemElegido;
+    private HabilidadDTO habilidadElegida;
+    private ItemDTO itemElegido;
     private boolean animando;
     private boolean finalMostrado;
     private int lineasEnRegistro;
@@ -150,7 +149,7 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     /** Arma la arena con los combatientes y reproduce la entrada. */
     @Override
-    public void iniciarBatalla(Batalla batalla, Runnable alTerminar) {
+    public void iniciarBatalla(BatallaDTO batalla, Runnable alTerminar) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
         this.finalMostrado = false;
@@ -158,7 +157,7 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         lineasEnRegistro = batalla.getRegistro().size();
         animando = true;
         refrescar();
-        arena.animarEntrada(batalla.getNumeroBatalla(), () -> {
+        arena.animarEntrada(batalla.getNumero(), () -> {
             animando = false;
             alTerminar.run();
         });
@@ -166,12 +165,12 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     /** Anima el último turno ejecutado; al terminar avisa al controlador. */
     @Override
-    public void animarTurno(Batalla batalla, Runnable alTerminar) {
+    public void animarTurno(BatallaDTO batalla, Runnable alTerminar) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
         animando = true;
         bloquearEntrada();
-        Combatiente actor = batalla.getUltimoActor();
+        CombatienteDTO actor = batalla.buscar(batalla.getUltimoActorId());
         lblTurno.setText(actor != null ? "Turno de: " + actor.getNombre() : "");
         dibujarOrdenTurnos();
         List<String> registro = batalla.getRegistro();
@@ -190,14 +189,15 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     /** Refresca la pantalla cuando le toca elegir al jugador o terminó la batalla. */
     @Override
-    public void actualizarVista(Batalla batalla) {
+    public void actualizarVista(BatallaDTO batalla) {
         this.batalla = batalla;
         this.modo = Modo.NINGUNO;
         lineasEnRegistro = batalla.getRegistro().size();
+        arena.actualizarCombatientes(batalla);
         refrescar();
-        if (!finalMostrado && batalla.getEstado() != EstadoBatalla.EN_CURSO) {
+        if (!finalMostrado && !batalla.isEnCurso()) {
             finalMostrado = true;
-            arena.animarFinal(batalla.getEstado() == EstadoBatalla.VICTORIA);
+            arena.animarFinal(batalla.isVictoria());
         }
     }
 
@@ -223,18 +223,18 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         btnItem.setEnabled(false);
         panelOpciones.removeAll();
         lblInstruccion.setText(" ");
-        arena.setActual(null);
-        arena.setSeleccionables(Collections.<Combatiente>emptyList());
+        arena.setActual(-1);
+        arena.setSeleccionables(Collections.<CombatienteDTO>emptyList());
         panelOpciones.revalidate();
         panelOpciones.repaint();
     }
 
     private void refrescar() {
-        boolean enCurso = batalla.getEstado() == EstadoBatalla.EN_CURSO;
-        boolean turnoJugador = !animando && batalla.esTurnoDelJugador();
-        Personaje actual = animando ? null : batalla.getPersonajeActual();
+        boolean enCurso = batalla.isEnCurso();
+        boolean turnoJugador = !animando && batalla.isTurnoDelJugador();
+        PersonajeDTO actual = animando ? null : batalla.getPersonajeActual();
 
-        lblRonda.setText("Ronda " + batalla.getRonda() + "   ·   Batalla " + batalla.getNumeroBatalla());
+        lblRonda.setText("Ronda " + batalla.getRonda() + "   ·   Batalla " + batalla.getNumero());
         lblTurno.setText(actual != null ? "Turno de: " + actual.getNombre() + " (" + actual.getNombreClase() + ")" : "");
 
         dibujarAliados(actual);
@@ -246,12 +246,12 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         btnHabilidad.setEnabled(turnoJugador);
         btnItem.setEnabled(turnoJugador);
 
-        arena.setActual(animando ? null : batalla.getActorActual());
+        arena.setActual(animando ? -1 : batalla.getActorActualId());
         arena.setSeleccionables(seleccionables());
 
         dibujarOpciones(actual);
         if (!animando && !enCurso) {
-            lblInstruccion.setText(batalla.getEstado() == EstadoBatalla.VICTORIA
+            lblInstruccion.setText(batalla.isVictoria()
                     ? "¡Victoria! Todos los enemigos fueron derrotados." : "Tu equipo fue derrotado...");
             panelOpciones.add(btnContinuar);
         }
@@ -259,38 +259,46 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         repaint();
     }
 
-    /** Combatientes que se pueden tocar en la arena según lo que está eligiendo el jugador. */
-    private List<Combatiente> seleccionables() {
-        List<Combatiente> lista = new ArrayList<>();
+    /** Combatientes que se pueden tocar en la arena según lo que está eligiendo el jugador (solo ayuda visual). */
+    private List<CombatienteDTO> seleccionables() {
+        List<CombatienteDTO> lista = new ArrayList<>();
         if (animando) {
             return lista;
         }
         if (modo == Modo.ATACAR || modo == Modo.HABILIDAD_A_ENEMIGO) {
-            lista.addAll(batalla.getEnemigosVivos());
+            for (CombatienteDTO e : batalla.getEnemigos()) {
+                if (e.isVivo()) {
+                    lista.add(e);
+                }
+            }
         } else if (modo == Modo.HABILIDAD_A_ALIADO || modo == Modo.ITEM_A_ALIADO) {
-            lista.addAll(batalla.getAliadosVivos());
+            for (PersonajeDTO p : batalla.getAliados()) {
+                if (p.isVivo()) {
+                    lista.add(p);
+                }
+            }
         }
         return lista;
     }
 
-    private void dibujarAliados(Personaje actual) {
+    private void dibujarAliados(PersonajeDTO actual) {
         panelAliados.removeAll();
         boolean seleccionable = modo == Modo.HABILIDAD_A_ALIADO || modo == Modo.ITEM_A_ALIADO;
-        for (Personaje p : batalla.getAliados()) {
+        for (PersonajeDTO p : batalla.getAliados()) {
             JPanel carta = new JPanel(new BorderLayout(0, 2));
             carta.setOpaque(false);
             JButton b = new JButton("<html>" + p.getNombre() + "  <small>Nvl " + p.getNivel()
-                    + "</small><br><small>Vida " + p.getVidaActual() + "/" + p.getVidaMaximo()
-                    + "  ·  " + Estilo.nombreRecurso(p.getTipoRecurso()) + " " + p.getRecursoActual()
+                    + "</small><br><small>Vida " + p.getVidaActual() + "/" + p.getVidaMaxima()
+                    + "  ·  " + Estilo.nombreRecurso(p.isUsaMana()) + " " + p.getRecursoActual()
                     + "/" + p.getRecursoMaximo() + textoEstados(p) + "</small></html>");
             b.setFont(Estilo.fuente(15));
             b.setFocusPainted(false);
-            b.setForeground(p.estaVivo() ? Estilo.TEXTO : Estilo.TEXTO_SUAVE);
+            b.setForeground(p.isVivo() ? Estilo.TEXTO : Estilo.TEXTO_SUAVE);
             b.setBackground(Estilo.PANEL);
             b.setIcon(Sprites.icono(p, 40));
             b.setIconTextGap(8);
             b.setHorizontalAlignment(SwingConstants.LEFT);
-            boolean resaltar = (seleccionable && p.estaVivo()) || p == actual;
+            boolean resaltar = (seleccionable && p.isVivo()) || (actual != null && p.getId() == actual.getId());
             b.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(resaltar ? Estilo.DORADO : Estilo.BORDE, resaltar ? 3 : 1),
                     BorderFactory.createEmptyBorder(3, 8, 3, 8)));
@@ -298,67 +306,22 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
             carta.add(b, BorderLayout.CENTER);
             JPanel barras = new JPanel(new GridLayout(2, 1, 0, 2));
             barras.setOpaque(false);
-            barras.add(Estilo.barra(p.getVidaActual(), p.getVidaMaximo(), Estilo.VIDA));
-            barras.add(Estilo.barra(p.getRecursoActual(), p.getRecursoMaximo(), Estilo.colorRecurso(p.getTipoRecurso())));
+            barras.add(Estilo.barra(p.getVidaActual(), p.getVidaMaxima(), Estilo.VIDA));
+            barras.add(Estilo.barra(p.getRecursoActual(), p.getRecursoMaximo(), Estilo.colorRecurso(p.isUsaMana())));
             carta.add(barras, BorderLayout.SOUTH);
             panelAliados.add(carta);
         }
     }
 
-    /**
-     * Fila con el orden de turnos: primero quien está actuando (resaltado en dorado)
-     * y después los que vienen en esta ronda. Si se está animando un turno, el que
-     * actúa es el último actor; si no, el que tiene el turno ahora.
-     * Al terminar la ronda la cola se vuelve a armar, por eso solo se muestra la ronda actual.
-     */
-    private void dibujarOrdenTurnos() {
-        panelOrden.removeAll();
-        List<Combatiente> orden = new ArrayList<>();
-        if (batalla.getEstado() == EstadoBatalla.EN_CURSO) {
-            if (animando && batalla.getUltimoActor() != null) {
-                orden.add(batalla.getUltimoActor());
-            }
-            if (batalla.getActorActual() != null) {
-                orden.add(batalla.getActorActual());
-            }
-            orden.addAll(batalla.getProximosTurnos());
-        }
-        if (!orden.isEmpty()) {
-            panelOrden.add(Estilo.etiqueta("Orden de turnos:", 14, Estilo.TEXTO_SUAVE));
-        }
-        for (int i = 0; i < orden.size(); i++) {
-            if (i > 0) {
-                panelOrden.add(Estilo.etiqueta("›", 18, Estilo.TEXTO_SUAVE));
-            }
-            panelOrden.add(fichaDeTurno(orden.get(i), i == 0));
-        }
-        panelOrden.revalidate();
-        panelOrden.repaint();
-    }
-
-    /** Ficha chica con el ícono y el nombre. Los enemigos tienen fondo rojizo; el que actúa, borde dorado. */
-    private JLabel fichaDeTurno(Combatiente c, boolean actuando) {
-        JLabel ficha = new JLabel(c.getNombre(), Sprites.icono(c, 24), SwingConstants.LEFT);
-        ficha.setFont(actuando ? Estilo.fuenteNegrita(13) : Estilo.fuente(13));
-        ficha.setForeground(actuando ? Estilo.DORADO : Estilo.TEXTO);
-        ficha.setOpaque(true);
-        ficha.setBackground(c instanceof Enemigo ? Estilo.ENEMIGO : Estilo.PANEL);
-        ficha.setIconTextGap(5);
-        ficha.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(actuando ? Estilo.DORADO : Estilo.BORDE, actuando ? 2 : 1),
-                BorderFactory.createEmptyBorder(2, 6, 2, 8)));
-        return ficha;
-    }
-
-    private String textoEstados(Combatiente c) {
-        if (!c.estaVivo()) {
+    private String textoEstados(CombatienteDTO c) {
+        if (!c.isVivo()) {
             return "  ·  DERROTADO";
         }
         String texto = "";
-        for (EstadoEfecto estado : c.getEstados()) {
-            texto = texto + "  ·  " + estado.getNombre().toUpperCase();
+        for (String estado : c.getEstados()) {
+            texto = texto + "  ·  " + estado.toUpperCase();
         }
-        if (c.estaDefendiendo()) {
+        if (c.isDefendiendo()) {
             texto = texto + "  ·  EN GUARDIA";
         }
         return texto;
@@ -374,8 +337,60 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
         txtRegistro.setCaretPosition(txtRegistro.getDocument().getLength());
     }
 
+    /**
+     * Fila con el orden de turnos: primero quien está actuando (resaltado en dorado)
+     * y después los que vienen en esta ronda. Si se está animando un turno, el que
+     * actúa es el último actor; si no, el que tiene el turno ahora.
+     * Al terminar la ronda la cola se vuelve a armar, por eso solo se muestra la ronda actual.
+     */
+    private void dibujarOrdenTurnos() {
+        panelOrden.removeAll();
+        List<CombatienteDTO> orden = new ArrayList<>();
+        if (batalla.isEnCurso()) {
+            if (animando) {
+                agregarSiExiste(orden, batalla.getUltimoActorId());
+            }
+            agregarSiExiste(orden, batalla.getActorActualId());
+            for (int id : batalla.getProximosTurnos()) {
+                agregarSiExiste(orden, id);
+            }
+        }
+        if (!orden.isEmpty()) {
+            panelOrden.add(Estilo.etiqueta("Orden de turnos:", 14, Estilo.TEXTO_SUAVE));
+        }
+        for (int i = 0; i < orden.size(); i++) {
+            if (i > 0) {
+                panelOrden.add(Estilo.etiqueta("›", 18, Estilo.TEXTO_SUAVE));
+            }
+            panelOrden.add(fichaDeTurno(orden.get(i), i == 0));
+        }
+        panelOrden.revalidate();
+        panelOrden.repaint();
+    }
+
+    private void agregarSiExiste(List<CombatienteDTO> orden, int id) {
+        CombatienteDTO c = batalla.buscar(id);
+        if (c != null) {
+            orden.add(c);
+        }
+    }
+
+    /** Ficha chica con el ícono y el nombre. Los enemigos tienen fondo rojizo; el que actúa, borde dorado. */
+    private JLabel fichaDeTurno(CombatienteDTO c, boolean actuando) {
+        JLabel ficha = new JLabel(c.getNombre(), Sprites.icono(c, 24), SwingConstants.LEFT);
+        ficha.setFont(actuando ? Estilo.fuenteNegrita(13) : Estilo.fuente(13));
+        ficha.setForeground(actuando ? Estilo.DORADO : Estilo.TEXTO);
+        ficha.setOpaque(true);
+        ficha.setBackground(c.isEnemigo() ? Estilo.ENEMIGO : Estilo.PANEL);
+        ficha.setIconTextGap(5);
+        ficha.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(actuando ? Estilo.DORADO : Estilo.BORDE, actuando ? 2 : 1),
+                BorderFactory.createEmptyBorder(2, 6, 2, 8)));
+        return ficha;
+    }
+
     /** Debajo de los botones se muestran las habilidades o ítems para elegir. */
-    private void dibujarOpciones(Personaje actual) {
+    private void dibujarOpciones(PersonajeDTO actual) {
         panelOpciones.removeAll();
         lblInstruccion.setText(" ");
         if (actual == null) {
@@ -387,11 +402,11 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
                 break;
             case ELEGIR_HABILIDAD:
                 lblInstruccion.setText("Elegí una habilidad.");
-                for (Habilidad h : actual.getHabilidades()) {
-                    JButton b = Estilo.boton(h.getNombre() + " · " + h.getCostoRecurso() + " "
-                            + Estilo.nombreRecurso(h.getTipoRecurso()));
+                for (HabilidadDTO h : actual.getHabilidades()) {
+                    JButton b = Estilo.boton(h.getNombre() + " · " + h.getCosto() + " "
+                            + Estilo.nombreRecurso(h.isUsaMana()));
                     b.setFont(Estilo.fuente(14));
-                    if (!actual.puedeUsar(h)) {
+                    if (!h.isUsable()) {
                         b.setForeground(Estilo.TEXTO_SUAVE);
                     }
                     b.addActionListener(e -> elegirHabilidad(h));
@@ -405,11 +420,15 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
                 lblInstruccion.setText(habilidadElegida.getNombre() + ": elegí un aliado (en la arena o en su tarjeta).");
                 break;
             case ELEGIR_ITEM:
-                Inventario inventario = batalla.getInventario();
-                List<Item> items = inventario.obtenerItemsDistintos();
-                lblInstruccion.setText(items.isEmpty() ? "No hay ítems en el inventario." : "Elegí un ítem.");
-                for (Item item : items) {
-                    JButton b = Estilo.boton(item.getNombre() + " x" + inventario.cantidadDe(item.getNombre()));
+                List<ItemDTO> items = new ArrayList<>();
+                for (ItemDTO item : batalla.getItems()) {
+                    if (item.isUsableEnBatalla()) {
+                        items.add(item);
+                    }
+                }
+                lblInstruccion.setText(items.isEmpty() ? "No hay ítems para usar en batalla." : "Elegí un ítem.");
+                for (ItemDTO item : items) {
+                    JButton b = Estilo.boton(item.getNombre() + " x" + item.getCantidad());
                     b.setFont(Estilo.fuente(14));
                     b.setToolTipText(item.getDescripcion());
                     b.addActionListener(e -> elegirItem(item));
@@ -431,48 +450,37 @@ public class VistaBatalla extends JPanel implements IVistaBatalla {
 
     // ---------------------------------------------------------------- clics
 
-    private void elegirHabilidad(Habilidad h) {
+    private void elegirHabilidad(HabilidadDTO h) {
         habilidadElegida = h;
-        TipoAlcance alcance = h.getAlcance();
-        if (alcance == TipoAlcance.PROPIO || alcance == TipoAlcance.VARIOS_ENEMIGOS) {
-            controlador.usarHabilidad(h, null); // no hace falta elegir objetivo
-        } else if (controlador.puedeUsarHabilidad(h)) {
-            cambiarModo(alcance == TipoAlcance.UN_ENEMIGO ? Modo.HABILIDAD_A_ENEMIGO : Modo.HABILIDAD_A_ALIADO);
+        AlcanceDTO alcance = h.getAlcance();
+        if (alcance == AlcanceDTO.PROPIO || alcance == AlcanceDTO.VARIOS_ENEMIGOS) {
+            controlador.usarHabilidad(h.getIndice(), -1); // no hace falta elegir objetivo
+        } else if (controlador.puedeUsarHabilidad(h.getIndice())) {
+            cambiarModo(alcance == AlcanceDTO.UN_ENEMIGO ? Modo.HABILIDAD_A_ENEMIGO : Modo.HABILIDAD_A_ALIADO);
         }
     }
 
-    private void elegirItem(Item item) {
+    private void elegirItem(ItemDTO item) {
         itemElegido = item;
         cambiarModo(Modo.ITEM_A_ALIADO);
     }
 
-    private void clicEnCombatiente(Combatiente c) {
-        if (c instanceof Enemigo) {
-            clicEnEnemigo((Enemigo) c);
-        } else if (c instanceof Personaje) {
-            clicEnAliado((Personaje) c);
-        }
-    }
-
-    private void clicEnEnemigo(Enemigo e) {
-        if (animando || !e.estaVivo()) {
-            return;
-        }
-        if (modo == Modo.ATACAR) {
-            controlador.atacar(e);
-        } else if (modo == Modo.HABILIDAD_A_ENEMIGO) {
-            controlador.usarHabilidad(habilidadElegida, e);
-        }
-    }
-
-    private void clicEnAliado(Personaje p) {
+    private void clicEnCombatiente(CombatienteDTO c) {
         if (animando) {
             return;
         }
-        if (modo == Modo.HABILIDAD_A_ALIADO) {
-            controlador.usarHabilidad(habilidadElegida, p);
+        if (modo == Modo.ATACAR) {
+            controlador.atacar(c.getId());
+        } else if (modo == Modo.HABILIDAD_A_ENEMIGO || modo == Modo.HABILIDAD_A_ALIADO) {
+            controlador.usarHabilidad(habilidadElegida.getIndice(), c.getId());
         } else if (modo == Modo.ITEM_A_ALIADO) {
-            controlador.usarItem(itemElegido, p);
+            controlador.usarItem(itemElegido.getNombre(), c.getId());
+        }
+    }
+
+    private void clicEnAliado(PersonajeDTO p) {
+        if (modo == Modo.HABILIDAD_A_ALIADO || modo == Modo.ITEM_A_ALIADO) {
+            clicEnCombatiente(p);
         }
     }
 

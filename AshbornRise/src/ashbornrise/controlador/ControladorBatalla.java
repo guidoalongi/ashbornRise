@@ -1,9 +1,11 @@
 package ashbornrise.controlador;
 
+import ashbornrise.modelo.AccionInvalidaException;
 import ashbornrise.modelo.Batalla;
 import ashbornrise.modelo.Combatiente;
 import ashbornrise.modelo.EstadoBatalla;
 import ashbornrise.modelo.TipoRecurso;
+import ashbornrise.modelo.acciones.Accion;
 import ashbornrise.modelo.acciones.AccionAtacar;
 import ashbornrise.modelo.acciones.AccionDefender;
 import ashbornrise.modelo.acciones.AccionHabilidad;
@@ -15,9 +17,12 @@ import ashbornrise.modelo.personajes.Personaje;
 import java.util.List;
 
 /**
- * Controlador (GRASP) de la pantalla de batalla. Recibe lo que el jugador eligió,
- * arma la Accion correspondiente y se la pasa a Batalla. Después hace jugar
- * a los enemigos hasta que vuelva a ser el turno de un personaje.
+ * Controlador (GRASP) de la pantalla de batalla. Recibe lo que el jugador eligió (ids e índices
+ * que vienen en los DTO), busca los objetos del modelo correspondientes, arma la Accion y se la
+ * pasa a Batalla. Las reglas (a quién se puede atacar, qué objetivos admite una habilidad...)
+ * las valida el MODELO: si la jugada no es válida, Batalla lanza AccionInvalidaException y acá
+ * solo se muestra el mensaje. Después hace jugar a los enemigos hasta que vuelva a ser el turno
+ * de un personaje.
  */
 public class ControladorBatalla {
 
@@ -33,74 +38,51 @@ public class ControladorBatalla {
     public void iniciarBatalla(Batalla nuevaBatalla) {
         this.batalla = nuevaBatalla;
         batalla.iniciar();
-        vista.iniciarBatalla(batalla, new ContinuarTurnos(this));
+        vista.iniciarBatalla(EnsambladorDTO.batalla(batalla), new ContinuarTurnos(this));
     }
 
     // ---------------------------------------------------------------- acciones del jugador
 
-    public void atacar(Combatiente objetivo) {
-        Personaje actor = batalla.getPersonajeActual();
-        if (actor == null || objetivo == null || !objetivo.estaVivo()) {
-            return;
-        }
-        batalla.ejecutarTurno(actor, new AccionAtacar(objetivo));
-        despuesDeLaAccion();
+    public void atacar(int objetivoId) {
+        ejecutar(new AccionAtacar(combatiente(objetivoId)));
     }
 
     public void defender() {
-        Personaje actor = batalla.getPersonajeActual();
-        if (actor == null) {
-            return;
-        }
-        batalla.ejecutarTurno(actor, new AccionDefender());
-        despuesDeLaAccion();
+        ejecutar(new AccionDefender());
     }
 
-    /** objetivoElegido puede ser null si la habilidad es PROPIO o VARIOS_ENEMIGOS. */
-    public void usarHabilidad(Habilidad habilidad, Combatiente objetivoElegido) {
+    /** objetivoId puede ser -1 si la habilidad es PROPIO o VARIOS_ENEMIGOS (los elige el modelo). */
+    public void usarHabilidad(int indiceHabilidad, int objetivoId) {
         Personaje actor = batalla.getPersonajeActual();
-        if (actor == null) {
+        Habilidad habilidad = habilidad(actor, indiceHabilidad);
+        if (habilidad == null) {
+            vista.mostrarError("Esa habilidad no existe.");
             return;
         }
-        if (!puedeUsarHabilidad(habilidad)) {
-            return;
-        }
-        List<Combatiente> objetivos = batalla.resolverObjetivos(habilidad, actor, objetivoElegido);
-        if (objetivos.isEmpty()) {
-            return;
-        }
-        batalla.ejecutarTurno(actor, new AccionHabilidad(habilidad, objetivos));
-        despuesDeLaAccion();
+        List<Combatiente> objetivos = batalla.resolverObjetivos(habilidad, actor, combatiente(objetivoId));
+        ejecutar(new AccionHabilidad(habilidad, objetivos));
     }
 
-    /** Chequea el recurso antes de usar una habilidad; si no alcanza, avisa en la vista. */
-    public boolean puedeUsarHabilidad(Habilidad habilidad) {
+    /**
+     * Consulta previa para avisar enseguida si no alcanza el recurso (antes de pedir un objetivo).
+     * La regla la sigue decidiendo el modelo (Personaje.puedeUsar).
+     */
+    public boolean puedeUsarHabilidad(int indiceHabilidad) {
         Personaje actor = batalla.getPersonajeActual();
-        if (actor == null) {
+        Habilidad habilidad = habilidad(actor, indiceHabilidad);
+        if (habilidad == null) {
             return false;
         }
         if (actor.puedeUsar(habilidad)) {
             return true;
         }
-        if (actor.getTipoRecurso() == TipoRecurso.MANA) {
-            vista.mostrarError("Maná insuficiente");
-        } else {
-            vista.mostrarError("Energía insuficiente");
-        }
+        vista.mostrarError(actor.getTipoRecurso() == TipoRecurso.MANA ? "Maná insuficiente" : "Energía insuficiente");
         return false;
     }
 
-    public void usarItem(Item item, Personaje objetivo) {
-        Personaje actor = batalla.getPersonajeActual();
-        if (actor == null || objetivo == null || !batalla.getInventario().contiene(item)) {
-            return;
-        }
-        if (!objetivo.estaVivo()) {
-            vista.mostrarError(objetivo.getNombre() + " está fuera de combate.");
-            return;
-        }
-        batalla.ejecutarTurno(actor, new AccionItem(actor, item, objetivo));
-        despuesDeLaAccion();
+    public void usarItem(String nombreItem, int objetivoId) {
+        Item item = batalla.getInventario().buscarPorNombre(nombreItem);
+        ejecutar(new AccionItem(batalla.getPersonajeActual(), item, aliado(objetivoId)));
     }
 
     /** Cuando la batalla terminó, el jugador toca "Continuar" para ver los resultados. */
@@ -112,9 +94,39 @@ public class ControladorBatalla {
 
     // ---------------------------------------------------------------- privado
 
-    /** La vista anima la acción y, cuando termina, sigue con los turnos que vengan. */
-    private void despuesDeLaAccion() {
-        vista.animarTurno(batalla, new ContinuarTurnos(this));
+    /** Le pasa la acción al modelo. Si el modelo la rechaza, se muestra el motivo y el turno sigue igual. */
+    private void ejecutar(Accion accion) {
+        try {
+            batalla.ejecutarTurno(batalla.getPersonajeActual(), accion);
+        } catch (AccionInvalidaException e) {
+            vista.mostrarError(e.getMessage());
+            return;
+        }
+        vista.animarTurno(EnsambladorDTO.batalla(batalla), new ContinuarTurnos(this));
+    }
+
+    /** Del id que usa la vista al combatiente del modelo (null si no existe). */
+    private Combatiente combatiente(int id) {
+        List<Combatiente> participantes = batalla.getCombatientes();
+        return id >= 0 && id < participantes.size() ? participantes.get(id) : null;
+    }
+
+    /** Igual que combatiente(), pero solo si es un personaje del jugador. */
+    private Personaje aliado(int id) {
+        Combatiente c = combatiente(id);
+        for (Personaje p : batalla.getAliados()) {
+            if (p == c) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    private Habilidad habilidad(Personaje actor, int indice) {
+        if (actor == null || indice < 0 || indice >= actor.getHabilidades().size()) {
+            return null;
+        }
+        return actor.getHabilidades().get(indice);
     }
 
     /**
@@ -125,9 +137,9 @@ public class ControladorBatalla {
     void continuarTurnos() {
         if (batalla.getEstado() == EstadoBatalla.EN_CURSO && !batalla.esTurnoDelJugador()) {
             batalla.ejecutarTurnoEnemigo();
-            vista.animarTurno(batalla, new ContinuarTurnos(this));
+            vista.animarTurno(EnsambladorDTO.batalla(batalla), new ContinuarTurnos(this));
         } else {
-            vista.actualizarVista(batalla);
+            vista.actualizarVista(EnsambladorDTO.batalla(batalla));
         }
     }
 }

@@ -1,7 +1,7 @@
 package ashbornrise.modelo.personajes;
 
 import ashbornrise.modelo.TipoRecurso;
-import ashbornrise.modelo.estados.TipoEstado;
+import ashbornrise.modelo.estados.Escudo;
 import ashbornrise.modelo.habilidades.HabilidadEstado;
 import ashbornrise.modelo.habilidades.HabilidadOfensiva;
 import ashbornrise.modelo.habilidades.TipoAlcance;
@@ -17,7 +17,7 @@ public class Mago extends Personaje {
         aprenderHabilidad(new HabilidadOfensiva("Bola de Fuego", 30, TipoRecurso.MANA,
                 TipoAlcance.VARIOS_ENEMIGOS, 1.2, 3));
         aprenderHabilidad(new HabilidadEstado("Escudo Arcano", 20, TipoRecurso.MANA,
-                TipoAlcance.UN_ALIADO, TipoEstado.ESCUDO, 25, 2, false));
+                TipoAlcance.UN_ALIADO, () -> new Escudo(25, 2), false));
     }
 
     @Override

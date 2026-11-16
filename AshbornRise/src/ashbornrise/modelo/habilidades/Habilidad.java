@@ -2,6 +2,7 @@ package ashbornrise.modelo.habilidades;
 
 import ashbornrise.modelo.Combatiente;
 import ashbornrise.modelo.TipoRecurso;
+import ashbornrise.modelo.estados.TipoEstado;
 
 import java.util.List;
 
@@ -32,6 +33,16 @@ public abstract class Habilidad {
      * Devuelve un texto que describe lo que pasó (para el registro de batalla).
      */
     public abstract String ejecutar(Combatiente origen, List<Combatiente> objetivos);
+
+    /** Estado que aplica esta habilidad, o null si no aplica ninguno (lo redefine HabilidadEstado). */
+    public TipoEstado getEstadoAplicado() {
+        return null;
+    }
+
+    /** ¿Restaura vida? Por defecto no (lo redefine HabilidadCuracion). */
+    public boolean curaVida() {
+        return false;
+    }
 
     /** Cantidad máxima de objetivos. Por defecto 1; las subclases pueden cambiarlo. */
     public int getCantidadObjetivos() {

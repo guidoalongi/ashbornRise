@@ -1,7 +1,7 @@
 package ashbornrise.modelo.personajes;
 
 import ashbornrise.modelo.TipoRecurso;
-import ashbornrise.modelo.estados.TipoEstado;
+import ashbornrise.modelo.estados.Escudo;
 import ashbornrise.modelo.habilidades.HabilidadCuracion;
 import ashbornrise.modelo.habilidades.HabilidadEstado;
 import ashbornrise.modelo.habilidades.TipoAlcance;
@@ -17,7 +17,7 @@ public class Curador extends Personaje {
         aprenderHabilidad(new HabilidadCuracion("Curación", 22, TipoRecurso.MANA,
                 TipoAlcance.UN_ALIADO, 35, 1));
         aprenderHabilidad(new HabilidadEstado("Bendición", 20, TipoRecurso.MANA,
-                TipoAlcance.UN_ALIADO, TipoEstado.ESCUDO, 20, 2, true));
+                TipoAlcance.UN_ALIADO, () -> new Escudo(20, 2), true));
     }
 
     @Override

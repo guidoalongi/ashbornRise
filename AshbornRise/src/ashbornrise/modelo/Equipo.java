@@ -18,6 +18,9 @@ public class Equipo {
     }
 
     public void agregarIntegrante(Personaje p) {
+        if (p == null || integrantes.contains(p)) {
+            throw new IllegalArgumentException("Integrante inválido o repetido");
+        }
         if (integrantes.size() >= MAXIMO) {
             throw new IllegalStateException("El equipo no puede tener más de " + MAXIMO + " integrantes");
         }

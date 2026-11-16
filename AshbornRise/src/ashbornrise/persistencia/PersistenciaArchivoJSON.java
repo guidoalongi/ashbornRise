@@ -4,6 +4,7 @@ import ashbornrise.modelo.Equipo;
 import ashbornrise.modelo.FabricaJuego;
 import ashbornrise.modelo.Inventario;
 import ashbornrise.modelo.Partida;
+import ashbornrise.modelo.items.Equipable;
 import ashbornrise.modelo.items.Item;
 import ashbornrise.modelo.personajes.Personaje;
 
@@ -19,7 +20,7 @@ import java.util.List;
  * Guarda la partida en un archivo con formato JSON, sin librerías externas.
  *
  * Se guarda solo el estado básico: progreso, oro, ítems (por nombre) y, por cada
- * personaje, su clase, nombre, nivel, experiencia, vida y recurso actuales.
+ * personaje, su clase, nombre, nivel, experiencia, vida, recurso y lo que tiene equipado.
  * Las estadísticas (ataque, defensa, etc.) no se guardan: al cargar, el personaje
  * se crea en nivel 1 y se sube de nivel hasta el nivel guardado, lo que da los mismos valores.
  *
@@ -77,7 +78,8 @@ public class PersistenciaArchivoJSON implements IPersistencia {
                     .append("\"nivel\": ").append(pj.getNivel()).append(", ")
                     .append("\"experiencia\": ").append(pj.getExperiencia()).append(", ")
                     .append("\"vidaActual\": ").append(pj.getVidaActual()).append(", ")
-                    .append("\"recursoActual\": ").append(pj.getRecursoActual())
+                    .append("\"recursoActual\": ").append(pj.getRecursoActual()).append(", ")
+                    .append("\"equipo\": [").append(nombresEquipados(pj)).append("]")
                     .append("}");
             if (i < personajes.size() - 1) {
                 sb.append(",");
@@ -86,6 +88,18 @@ public class PersistenciaArchivoJSON implements IPersistencia {
         }
         sb.append("  ]\n");
         sb.append("}\n");
+        return sb.toString();
+    }
+
+    private String nombresEquipados(Personaje pj) {
+        StringBuilder sb = new StringBuilder();
+        List<Equipable> equipados = pj.getEquipamiento();
+        for (int i = 0; i < equipados.size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append("\"").append(equipados.get(i).getNombre()).append("\"");
+        }
         return sb.toString();
     }
 
@@ -112,7 +126,7 @@ public class PersistenciaArchivoJSON implements IPersistencia {
                 inventario.agregarOro(leerEntero(linea, "oro"));
             } else if (linea.contains("\"items\"")) {
                 for (String nombre : leerListaDeTextos(linea)) {
-                    inventario.agregarItem(FabricaJuego.crearConsumible(nombre));
+                    inventario.agregarItem(FabricaJuego.crearItem(nombre));
                 }
             }
         }
@@ -131,6 +145,15 @@ public class PersistenciaArchivoJSON implements IPersistencia {
                 leerEntero(linea, "experiencia"),
                 leerEntero(linea, "vidaActual"),
                 leerEntero(linea, "recursoActual"));
+        if (linea.contains("\"equipo\"")) {          // las partidas viejas no tienen este dato
+            for (String nombre : leerListaDeTextos(linea)) {
+                Item item = FabricaJuego.crearItem(nombre);
+                if (!(item instanceof Equipable)) {
+                    throw new IllegalStateException(nombre + " no es un ítem equipable");
+                }
+                p.equipar((Equipable) item);
+            }
+        }
         return p;
     }
 

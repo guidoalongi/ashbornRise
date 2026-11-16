@@ -23,19 +23,26 @@ ashbornrise/
 ├── Main.java                 arma y conecta Vista, Controladores y Persistencia
 ├── modelo/                   lógica del juego (no conoce a la vista)
 │   ├── Combatiente, Batalla, GestorTurnos, ComparadorPorVelocidad, Equipo, Inventario,
-│   │                         Partida, Recompensa
-│   ├── FabricaJuego          party inicial, ítems, enemigos y botín de cada batalla
+│   │                         Partida, Recompensa, AccionInvalidaException
+│   ├── FabricaJuego          punto de acceso para crear personajes, ítems, enemigos y botín
+│   ├── fabricas/             RegistroPersonajes, CatalogoItems, CatalogoBatallas, DefinicionBatalla,
+│   │                         CreadorPersonaje, CreadorItem, CreadorEnemigo (registros extensibles, sin switch),
+│   │                         ContenidoBase (el contenido del juego: clases, ítems y las 8 batallas)
 │   ├── EstadoBatalla, TipoRecurso
 │   ├── personajes/           Personaje, Guerrero, Mago, Arquero, Curador, TipoElemento
 │   ├── enemigos/             Enemigo, GoblinMerodeador, EsqueletoGuerrero, ChamanOscuro,
 │   │                         AranaVenenosa, SenorDeLasSombras
 │   ├── habilidades/          Habilidad, HabilidadOfensiva, HabilidadCuracion, HabilidadEstado, TipoAlcance
-│   ├── estados/              EstadoEfecto, Veneno, Escudo, Aturdimiento, TipoEstado
-│   ├── items/                Item, Consumible, TipoEfectoConsumible
-│   └── acciones/             Accion, AccionAtacar, AccionDefender, AccionHabilidad, AccionItem
+│   ├── estados/              EstadoEfecto, Veneno, Escudo, Aturdimiento, TipoEstado, CreadorEstado
+│   ├── items/                Item, Consumible, Equipable, TipoRanura,
+│   │                         EfectoConsumible, RestaurarVida, RestaurarMana, QuitarEstado
+│   └── acciones/             Accion, AccionAtacar, AccionDefender, AccionHabilidad, AccionItem, TipoAccion
 ├── persistencia/             IPersistencia, PersistenciaArchivoJSON
+├── dto/                      PartidaDTO, BatallaDTO, PersonajeDTO, CombatienteDTO, HabilidadDTO, ItemDTO,
+│                             EquipadoDTO, RecompensaDTO, TurnoDTO (solo datos: lo que reciben las vistas)
 ├── controlador/              ControladorJuego, ControladorBatalla,
 │                             IVentanaJuego e IVistaBatalla (lo que los controladores necesitan de la vista),
+│                             EnsambladorDTO (arma los DTO a partir del modelo),
 │                             ContinuarTurnos (el Runnable que la vista ejecuta al terminar una animación)
 └── vista/                    VentanaPrincipal, VistaInicio, VistaJuego (estado del equipo),
                               VistaBatalla, VistaResultados, Estilo,
@@ -49,7 +56,13 @@ diagramas/                    diagrama de clases, diagrama del paquete arena y 3
                               (.mmd editable + .png + .svg)
 ```
 
-La Vista solo **lee** el modelo para dibujarlo. Todo lo que **cambia** el modelo pasa por un controlador.
+La Vista no conoce el modelo: recibe **DTOs** (fotos de solo datos) y le devuelve al controlador ids,
+índices o nombres. Todo lo que **cambia** el modelo pasa por un controlador, y las reglas del juego
+(objetivos válidos, turnos, inventario) las valida el **modelo**, que lanza `AccionInvalidaException`
+si se le pide algo inválido.
+
+**Ítems equipables:** arma, armadura y accesorio (`Equipable`, uno por ranura) suman ATQ / DEF / VEL
+al personaje. Se equipan y se quitan entre batallas desde la pantalla del equipo, y se guardan con la partida.
 
 ## Arena 3D
 

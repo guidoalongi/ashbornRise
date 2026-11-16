@@ -53,6 +53,11 @@ public class SenorDeLasSombras extends Enemigo {
         }
     }
 
+    @Override
+    public boolean esJefe() {
+        return true;
+    }
+
     public int getFaseActual() {
         return faseActual;
     }

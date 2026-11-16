@@ -1,7 +1,6 @@
 package ashbornrise.vista.arena;
 
-import ashbornrise.modelo.Combatiente;
-import ashbornrise.modelo.estados.TipoEstado;
+import ashbornrise.dto.CombatienteDTO;
 
 /**
  * Representación 3D de un combatiente en la arena. Guarda la posición, los desplazamientos
@@ -10,7 +9,9 @@ import ashbornrise.modelo.estados.TipoEstado;
  */
 class Actor3D {
 
-    final Combatiente combatiente;
+    final int id;
+    /** Último estado conocido del combatiente (lo actualiza PanelArena con cada BatallaDTO nuevo). */
+    CombatienteDTO combatiente;
     final ModeloVoxel modelo;
     final double escala;   // metros por píxel del sprite
     final int frente;      // +1 mira hacia +x (personajes), -1 hacia -x (enemigos)
@@ -31,8 +32,9 @@ class Actor3D {
     boolean vivo;
     boolean veneno, escudo, aturdido, guardia;
 
-    Actor3D(Combatiente c, ModeloVoxel modelo, double escala, int frente) {
+    Actor3D(CombatienteDTO c, ModeloVoxel modelo, double escala, int frente) {
         this.combatiente = c;
+        this.id = c.getId();
         this.modelo = modelo;
         this.escala = escala;
         this.frente = frente;
@@ -43,11 +45,16 @@ class Actor3D {
 
     void sincronizar() {
         vidaSincronizada = combatiente.getVidaActual();
-        vivo = combatiente.estaVivo();
-        veneno = combatiente.tieneEstado(TipoEstado.VENENO);
-        escudo = combatiente.tieneEstado(TipoEstado.ESCUDO);
-        aturdido = combatiente.tieneEstado(TipoEstado.ATURDIMIENTO);
-        guardia = combatiente.estaDefendiendo();
+        vivo = combatiente.isVivo();
+        veneno = combatiente.isEnvenenado();
+        escudo = combatiente.isConEscudo();
+        aturdido = combatiente.isAturdido();
+        guardia = combatiente.isDefendiendo();
+    }
+
+    /** Recibe la foto nueva del combatiente; la animación mostrará la diferencia con la anterior. */
+    void actualizar(CombatienteDTO nuevo) {
+        combatiente = nuevo;
     }
 
     /** Diferencia de vida que todavía no se mostró. */
@@ -56,11 +63,11 @@ class Actor3D {
     }
 
     boolean estadosPendientes() {
-        return vivo != combatiente.estaVivo()
-                || veneno != combatiente.tieneEstado(TipoEstado.VENENO)
-                || escudo != combatiente.tieneEstado(TipoEstado.ESCUDO)
-                || aturdido != combatiente.tieneEstado(TipoEstado.ATURDIMIENTO)
-                || guardia != combatiente.estaDefendiendo();
+        return vivo != combatiente.isVivo()
+                || veneno != combatiente.isEnvenenado()
+                || escudo != combatiente.isConEscudo()
+                || aturdido != combatiente.isAturdido()
+                || guardia != combatiente.isDefendiendo();
     }
 
     double x() {

@@ -27,6 +27,14 @@ public abstract class EstadoEfecto {
         return danio;
     }
 
+    /**
+     * Si devuelve true, es un estado perjudicial (Veneno, Aturdimiento) que se puede limpiar
+     * con una Bendición o un ítem. Por defecto, false.
+     */
+    public boolean esNegativo() {
+        return false;
+    }
+
     /** Si devuelve true, el afectado pierde su turno. Por defecto, false. */
     public boolean impideActuar() {
         return false;

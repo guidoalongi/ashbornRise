@@ -44,7 +44,7 @@ public abstract class Combatiente {
 
     /** Daño "bruto" de un golpe. Las subclases pueden redefinirlo (ej.: crítico del Arquero). */
     public int calcularDanio() {
-        return ataque;
+        return getAtaque();
     }
 
     /**
@@ -53,7 +53,7 @@ public abstract class Combatiente {
      * Devuelve el daño que realmente se descontó de la vida.
      */
     public int recibirDanio(int cantidad) {
-        int danio = cantidad - defensa / 2;
+        int danio = cantidad - getDefensa() / 2;
         if (danio < 1) {
             danio = 1;
         }
@@ -98,6 +98,12 @@ public abstract class Combatiente {
         return h.ejecutar(this, objetivos);
     }
 
+    /** ¿Puede usar esta habilidad ahora? Por defecto, si está vivo (los enemigos no pagan costo).
+     *  Personaje lo redefine para exigir que la tenga y que le alcance el recurso. */
+    public boolean puedeUsar(Habilidad h) {
+        return estaVivo();
+    }
+
     /** Multiplicador de las curaciones que hace. Por defecto 1; el Curador lo redefine. */
     public double getPoderCuracion() {
         return 1.0;
@@ -108,7 +114,7 @@ public abstract class Combatiente {
     }
 
     public int obtenerVelocidad() {
-        return velocidad;
+        return getVelocidad();
     }
 
     // ---------------------------------------------------------------- turnos y estados
@@ -176,6 +182,18 @@ public abstract class Combatiente {
         return false;
     }
 
+    /** Quita los estados negativos (Veneno, Aturdimiento...). Devuelve true si tenía alguno. */
+    public boolean quitarEstadosNegativos() {
+        boolean teniaAlguno = false;
+        for (int i = estados.size() - 1; i >= 0; i--) {
+            if (estados.get(i).esNegativo()) {
+                estados.remove(i);
+                teniaAlguno = true;
+            }
+        }
+        return teniaAlguno;
+    }
+
     public void quitarTodosLosEstados() {
         estados.clear();
     }
@@ -207,6 +225,11 @@ public abstract class Combatiente {
     /** Personaje → true (lo maneja el jugador). Enemigo → false (decide solo). */
     public abstract boolean esControladoPorJugador();
 
+    /** Dos combatientes son aliados si pelean del mismo lado (los dos personajes o los dos enemigos). */
+    public boolean esAliadoDe(Combatiente otro) {
+        return otro != null && esControladoPorJugador() == otro.esControladoPorJugador();
+    }
+
     // ---------------------------------------------------------------- getters
 
     public String getNombre() {
@@ -221,6 +244,7 @@ public abstract class Combatiente {
         return vidaMaximo;
     }
 
+    /** Estadísticas "efectivas". Personaje las redefine para sumar el equipamiento. */
     public int getAtaque() {
         return ataque;
     }

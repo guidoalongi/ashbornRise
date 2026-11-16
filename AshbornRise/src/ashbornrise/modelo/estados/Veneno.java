@@ -18,6 +18,11 @@ public class Veneno extends EstadoEfecto {
     }
 
     @Override
+    public boolean esNegativo() {
+        return true;
+    }
+
+    @Override
     public TipoEstado getTipo() {
         return TipoEstado.VENENO;
     }

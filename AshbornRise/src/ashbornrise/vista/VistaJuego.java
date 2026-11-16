@@ -1,11 +1,10 @@
 package ashbornrise.vista;
 
 import ashbornrise.controlador.ControladorJuego;
-import ashbornrise.modelo.FabricaJuego;
-import ashbornrise.modelo.Inventario;
-import ashbornrise.modelo.Partida;
-import ashbornrise.modelo.items.Item;
-import ashbornrise.modelo.personajes.Personaje;
+import ashbornrise.dto.EquipadoDTO;
+import ashbornrise.dto.ItemDTO;
+import ashbornrise.dto.PartidaDTO;
+import ashbornrise.dto.PersonajeDTO;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -21,7 +20,10 @@ import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pantalla de estado del equipo e inventario (entre batallas). */
+/**
+ * Pantalla de estado del equipo e inventario (entre batallas).
+ * Recibe un PartidaDTO (solo datos): no conoce las clases del modelo.
+ */
 public class VistaJuego extends JPanel {
 
     private ControladorJuego controlador;
@@ -34,9 +36,9 @@ public class VistaJuego extends JPanel {
     private JComboBox<String> comboPersonajes;
     private JButton btnSiguiente;
 
-    // Listas paralelas a los combos: la posición del combo indica el objeto elegido.
-    private List<Item> itemsDelCombo = new ArrayList<>();
-    private List<Personaje> personajesDelCombo = new ArrayList<>();
+    // Listas paralelas a los combos: la posición del combo indica el ítem / personaje elegido.
+    private List<ItemDTO> itemsDelCombo = new ArrayList<>();
+    private List<PersonajeDTO> personajesDelCombo = new ArrayList<>();
 
     public VistaJuego() {
         setBackground(Estilo.FONDO);
@@ -95,7 +97,7 @@ public class VistaJuego extends JPanel {
         comboPersonajes = new JComboBox<>();
         comboItems.setPreferredSize(new Dimension(220, 30));
         comboPersonajes.setPreferredSize(new Dimension(180, 30));
-        JButton btnUsar = Estilo.boton("USAR");
+        JButton btnUsar = Estilo.boton("USAR / EQUIPAR");
         btnUsar.addActionListener(e -> usarItemSeleccionado());
         usar.add(Estilo.etiqueta("Usar", 16, Estilo.TEXTO));
         usar.add(comboItems);
@@ -107,18 +109,17 @@ public class VistaJuego extends JPanel {
     }
 
     /** Vuelve a dibujar la pantalla con los datos actuales de la partida. */
-    public void actualizar(Partida partida) {
+    public void actualizar(PartidaDTO partida) {
         lblMensaje.setText(" ");
-        Inventario inventario = partida.getInventario();
-        int batalla = Math.min(partida.getNumeroBatallaActual(), FabricaJuego.CANTIDAD_BATALLAS);
-        lblInfo.setText("Oro: " + inventario.getOro() + "   |   Batalla "
-                + batalla + " / " + FabricaJuego.CANTIDAD_BATALLAS);
-        btnSiguiente.setEnabled(!partida.estaCompleta());
+        int batalla = Math.min(partida.getNumeroBatallaActual(), partida.getCantidadBatallas());
+        lblInfo.setText("Oro: " + partida.getOro() + "   |   Batalla "
+                + batalla + " / " + partida.getCantidadBatallas());
+        btnSiguiente.setEnabled(!partida.isCompleta());
 
         panelPersonajes.removeAll();
         personajesDelCombo.clear();
         comboPersonajes.removeAllItems();
-        for (Personaje p : partida.getEquipo().getIntegrantes()) {
+        for (PersonajeDTO p : partida.getPersonajes()) {
             panelPersonajes.add(crearTarjetaPersonaje(p));
             personajesDelCombo.add(p);
             comboPersonajes.addItem(p.getNombre());
@@ -127,26 +128,27 @@ public class VistaJuego extends JPanel {
         panelItems.removeAll();
         itemsDelCombo.clear();
         comboItems.removeAllItems();
-        List<Item> distintos = inventario.obtenerItemsDistintos();
+        List<ItemDTO> distintos = partida.getItems();
         if (distintos.isEmpty()) {
             panelItems.add(Estilo.etiqueta("(vacío)", 15, Estilo.TEXTO_SUAVE));
         }
-        for (Item item : distintos) {
-            int cantidad = inventario.cantidadDe(item.getNombre());
-            JLabel chip = Estilo.etiqueta(item.getNombre().toUpperCase() + " x" + cantidad, 14, Estilo.DORADO);
+        for (ItemDTO item : distintos) {
+            int cantidad = item.getCantidad();
+            JLabel chip = Estilo.etiqueta(item.getNombre().toUpperCase() + " x" + cantidad, 14,
+                    item.isEquipable() ? Estilo.TEXTO : Estilo.DORADO);
             chip.setToolTipText(item.getDescripcion());
             chip.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(Estilo.DORADO),
                     BorderFactory.createEmptyBorder(3, 8, 3, 8)));
             panelItems.add(chip);
             itemsDelCombo.add(item);
-            comboItems.addItem(item.getNombre() + " (x" + cantidad + ")");
+            comboItems.addItem(item.getNombre() + " (x" + cantidad + ")" + (item.isEquipable() ? " · equipable" : ""));
         }
         revalidate();
         repaint();
     }
 
-    private JPanel crearTarjetaPersonaje(Personaje p) {
+    private JPanel crearTarjetaPersonaje(PersonajeDTO p) {
         JPanel t = Estilo.tarjeta();
         t.setLayout(new BoxLayout(t, BoxLayout.Y_AXIS));
         JLabel sprite = new JLabel(Sprites.icono(p, 96));
@@ -156,16 +158,16 @@ public class VistaJuego extends JPanel {
         agregarCentrado(t, Estilo.etiqueta(p.getNombre(), 24, Estilo.TEXTO));
         agregarCentrado(t, Estilo.etiqueta(p.getNombreClase() + " · Nvl. " + p.getNivel(), 15, Estilo.TEXTO_SUAVE));
         t.add(espacio(14));
-        agregarBarra(t, "Vida", p.getVidaActual(), p.getVidaMaximo(), Estilo.VIDA);
-        agregarBarra(t, Estilo.nombreRecurso(p.getTipoRecurso()), p.getRecursoActual(), p.getRecursoMaximo(),
-                Estilo.colorRecurso(p.getTipoRecurso()));
+        agregarBarra(t, "Vida", p.getVidaActual(), p.getVidaMaxima(), Estilo.VIDA);
+        agregarBarra(t, Estilo.nombreRecurso(p.isUsaMana()), p.getRecursoActual(), p.getRecursoMaximo(),
+                Estilo.colorRecurso(p.isUsaMana()));
         t.add(espacio(10));
         JPanel stats = new JPanel(new GridLayout(2, 2, 6, 4));
         stats.setOpaque(false);
-        stats.add(Estilo.etiqueta("ATQ " + p.getAtaque(), 15, Estilo.TEXTO_SUAVE));
-        stats.add(Estilo.etiqueta("DEF " + p.getDefensa(), 15, Estilo.TEXTO_SUAVE));
-        stats.add(Estilo.etiqueta("VEL " + p.getVelocidad(), 15, Estilo.TEXTO_SUAVE));
-        stats.add(Estilo.etiqueta("EXP " + p.getExperiencia() + "/" + p.experienciaParaSubir(), 15, Estilo.TEXTO_SUAVE));
+        stats.add(Estilo.etiqueta("ATQ " + p.getAtaque() + conBonus(p.getBonusAtaque()), 15, Estilo.TEXTO_SUAVE));
+        stats.add(Estilo.etiqueta("DEF " + p.getDefensa() + conBonus(p.getBonusDefensa()), 15, Estilo.TEXTO_SUAVE));
+        stats.add(Estilo.etiqueta("VEL " + p.getVelocidad() + conBonus(p.getBonusVelocidad()), 15, Estilo.TEXTO_SUAVE));
+        stats.add(Estilo.etiqueta("EXP " + p.getExperiencia() + "/" + p.getExperienciaParaSubir(), 15, Estilo.TEXTO_SUAVE));
         stats.setAlignmentX(Component.LEFT_ALIGNMENT);
         stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         t.add(stats);
@@ -178,7 +180,45 @@ public class VistaJuego extends JPanel {
         habilidades.setText(texto + "</html>");
         habilidades.setAlignmentX(Component.LEFT_ALIGNMENT);
         t.add(habilidades);
+        t.add(espacio(8));
+        agregarEquipamiento(t, p);
         return t;
+    }
+
+    /** Lo que tiene equipado, con un botón para quitar cada cosa. */
+    private void agregarEquipamiento(JPanel t, PersonajeDTO p) {
+        agregarCentrado(t, Estilo.etiqueta("Equipo", 14, Estilo.TEXTO));
+        if (p.getEquipamiento().isEmpty()) {
+            agregarCentrado(t, Estilo.etiqueta("(nada equipado)", 13, Estilo.TEXTO_SUAVE));
+        }
+        for (EquipadoDTO e : p.getEquipamiento()) {
+            JPanel fila = new JPanel(new BorderLayout(6, 0));
+            fila.setOpaque(false);
+            JLabel nombre = Estilo.etiqueta(e.getNombreRanura() + ": " + e.getNombre(), 13, Estilo.TEXTO_SUAVE);
+            nombre.setToolTipText(e.getDescripcion());
+            fila.add(nombre, BorderLayout.CENTER);
+            JButton quitar = new JButton("x");
+            quitar.setToolTipText("Quitar " + e.getNombre());
+            quitar.setFont(Estilo.fuente(11));
+            quitar.setMargin(new java.awt.Insets(0, 4, 0, 4));
+            quitar.setFocusPainted(false);
+            quitar.setForeground(Estilo.DORADO);
+            quitar.setBackground(Estilo.BOTON);
+            quitar.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(Estilo.BORDE), BorderFactory.createEmptyBorder(0, 5, 1, 5)));
+            quitar.addActionListener(ev -> controlador.desequipar(p.getId(), e.getRanura()));
+            fila.add(quitar, BorderLayout.EAST);
+            fila.setAlignmentX(Component.LEFT_ALIGNMENT);
+            fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+            t.add(fila);
+        }
+    }
+
+    private String conBonus(int bonus) {
+        if (bonus == 0) {
+            return "";
+        }
+        return bonus > 0 ? " (+" + bonus + ")" : " (" + bonus + ")";
     }
 
     private void agregarBarra(JPanel t, String nombre, int valor, int maximo, java.awt.Color color) {
@@ -211,7 +251,7 @@ public class VistaJuego extends JPanel {
         int i = comboItems.getSelectedIndex();
         int j = comboPersonajes.getSelectedIndex();
         if (i >= 0 && j >= 0) {
-            controlador.usarItem(itemsDelCombo.get(i), personajesDelCombo.get(j));
+            controlador.usarItem(itemsDelCombo.get(i).getNombre(), personajesDelCombo.get(j).getId());
         }
     }
 

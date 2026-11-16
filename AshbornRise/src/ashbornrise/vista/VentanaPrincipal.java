@@ -3,8 +3,8 @@ package ashbornrise.vista;
 import ashbornrise.controlador.ControladorBatalla;
 import ashbornrise.controlador.ControladorJuego;
 import ashbornrise.controlador.IVentanaJuego;
-import ashbornrise.modelo.Partida;
-import ashbornrise.modelo.Recompensa;
+import ashbornrise.dto.PartidaDTO;
+import ashbornrise.dto.RecompensaDTO;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -61,7 +61,7 @@ public class VentanaPrincipal extends JFrame implements IVentanaJuego {
     }
 
     @Override
-    public void mostrarJuego(Partida partida) {
+    public void mostrarJuego(PartidaDTO partida) {
         vistaJuego.actualizar(partida);
         cartas.show(contenedor, JUEGO);
     }
@@ -72,7 +72,7 @@ public class VentanaPrincipal extends JFrame implements IVentanaJuego {
     }
 
     @Override
-    public void mostrarResultadosVictoria(Recompensa recompensa, Partida partida, int rondas) {
+    public void mostrarResultadosVictoria(RecompensaDTO recompensa, PartidaDTO partida, int rondas) {
         vistaResultados.mostrarVictoria(recompensa, partida, rondas);
         cartas.show(contenedor, RESULTADOS);
     }
